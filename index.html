@@ -184,7 +184,7 @@
             import: "导入",
             account: "账户",
             loginTitle: "登录 FlashCraft",
-            loginDesc: "使用邮箱魔法链接登录（无需密码）。",
+            loginDesc: "使用邮箱验证码登录（无需密码）。",
             emailPlaceholder: "邮箱地址",
             sendMagicLink: "发送魔法链接",
             magicLinkSent: "已发送，请检查邮箱",
@@ -352,7 +352,7 @@
             import: "Import",
             account: "Account",
             loginTitle: "Sign in to FlashCraft",
-            loginDesc: "Magic link login with email (no password).",
+            loginDesc: "Email login via verification code (no password).",
             emailPlaceholder: "Email address",
             sendMagicLink: "Send Magic Link",
             magicLinkSent: "Sent! Check your inbox",
@@ -1099,15 +1099,15 @@
         const primaryLabel = current ? t.regenerate : t.generateShareCode;
 
         return (
-            <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
-                <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+            <div className="fixed inset-0 z-[240] bg-black/40 backdrop-blur-md animate-blur-in flex items-start justify-center px-4 py-10">
+                <div className="w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in bg-white max-h-[88vh]">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-craft-black flex items-center gap-2">
                             <Icon name="share-2" className="text-craft-yellow" fill="currentColor" /> {t.shareSettings}
                         </h3>
                         <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
                     </div>
-                    <div className="p-6 bg-[#f9f9fb] space-y-4">
+                    <div className="p-6 bg-[#f9f9fb] space-y-4 overflow-y-auto custom-scrollbar">
                         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                             <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{deck.title}</div>
                             <div className="text-sm text-gray-600 leading-relaxed">{t.shareDesc}</div>
@@ -2498,11 +2498,11 @@
                             <div className="bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl p-4">
                                 <div className="flex items-center gap-2 text-sm font-bold text-craft-black">
                                     <Icon name="mail" size={16} className="text-craft-yellow" />
-                                    登录提示
+                                    登录提示（验证码）
                                 </div>
                                 <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-1">
-                                    <div>同一设备：可以直接点击邮件里的 Magic Link 完成登录。</div>
-                                    <div>不同设备（推荐）：复制邮件里的 6 位验证码粘贴到下方，兼容性更好。</div>
+                                    <div>收信后复制 6 位验证码，粘贴到下方「验证登录」。</div>
+                                    <div>邮件里的链接可忽略，验证码方式更稳定，适合跨设备。</div>
                                     <div>默认记住当前浏览器，下次自动登录（直至你退出）。</div>
                                 </div>
                             </div>

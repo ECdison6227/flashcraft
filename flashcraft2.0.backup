@@ -1,0 +1,2885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FlashCraft - 记忆工坊 v3.1</title>
+  
+  <!-- 核心依赖 -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Markdown 支持 -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
+
+  <!-- 数学公式支持 (KaTeX) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- 配置 Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            craft: {
+              black: '#171717',
+              gray: '#f5f5f7',
+              yellow: '#facc15',
+              border: '#e5e5e5',
+              text: '#1d1d1f',
+              card: '#ffffff'
+            }
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'blur-in': 'blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'scale-in': 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            'toast-in': 'toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'glow': 'glow 1.2s ease-in-out infinite',
+            'fade-out': 'fadeOut 0.5s ease-out forwards',
+            'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-8px)' }
+            },
+            toastIn: {
+              '0%': { opacity: '0', transform: 'translateY(14px) scale(0.98)' },
+              '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+            },
+            blurIn: {
+              '0%': { filter: 'blur(12px)', opacity: '0', transform: 'scale(0.98)' },
+              '100%': { filter: 'blur(0)', opacity: '1', transform: 'scale(1)' }
+            },
+            fadeOut: {
+              '0%': { opacity: '1' },
+              '100%': { opacity: '0' }
+            },
+            scaleIn: {
+              '0%': { transform: 'scale(0.9)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' }
+            },
+            glow: {
+              '0%, 100%': { boxShadow: '0 0 0 rgba(250, 204, 21, 0)' },
+              '50%': { boxShadow: '0 0 40px rgba(250, 204, 21, 0.35)' }
+            },
+            shake: {
+              '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+              '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+              '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+              '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    
+    body { 
+      background-color: #f5f5f7; 
+      color: #1d1d1f; 
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* 3D 翻转核心 - Grid Stack */
+    .perspective-container { perspective: 1200px; }
+    
+    .card-inner { 
+      display: grid;
+      grid-template-areas: "card";
+      width: 100%; 
+      position: relative;
+      transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+      transform-style: preserve-3d; 
+    }
+    
+    .card-front, .card-back { 
+      grid-area: card; 
+      width: 100%; 
+      backface-visibility: hidden; 
+      -webkit-backface-visibility: hidden;
+      border-radius: 32px;
+      box-shadow: 
+        0 10px 30px -10px rgba(0,0,0,0.1),
+        0 4px 6px -4px rgba(0,0,0,0.05),
+        inset 0 0 0 1px rgba(0,0,0,0.02);
+    }
+    
+    .card-front { transform: rotateY(0deg); }
+    .card-back { transform: rotateY(180deg); }
+    .flipped .card-inner { transform: rotateY(180deg); }
+
+    /* Markdown & Math Styles */
+    .markdown-body {
+        font-family: inherit;
+        line-height: 1.6;
+        text-align: left;
+        width: 100%;
+        word-wrap: break-word;
+    }
+    .markdown-body p { margin-bottom: 0.8em; text-align: center; } 
+    .markdown-body ul, .markdown-body ol { text-align: left; margin-left: 1em; } 
+    .markdown-body h1, .markdown-body h2 { text-align: center; font-weight: 800; margin-bottom: 0.5em; }
+    .markdown-body code { background: rgba(0,0,0,0.08); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; font-weight: bold; }
+    .markdown-body pre { background: rgba(0,0,0,0.05); padding: 1em; border-radius: 8px; overflow-x: auto; text-align: left; margin: 1em 0; }
+    .markdown-body blockquote { border-left: 3px solid #e5e5e5; padding-left: 1em; margin-left: 0; color: #666; font-style: italic; }
+    
+    .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; }
+    .katex { font-size: 1.1em; }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .blur-active { filter: blur(12px); opacity: 0.8; transform: scale(0.98); transition: all 0.5s ease-out; }
+    .blur-clearing { filter: blur(0); opacity: 1; transform: scale(1); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .animate-enabled { animation: float 6s ease-in-out infinite; }
+    .animate-disabled { animation: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useLayoutEffect, useMemo, memo } = React;
+
+    // --- Supabase Configuration (DO NOT CHANGE) ---
+    const SUPABASE_URL = 'https://jkhboywafpdesmdguvts.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpraGJveXdhZnBkZXNtZGd1dnRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTYyMjYsImV4cCI6MjA4MTYzMjIyNn0.eT1-D9nsBNaWw6jHmpGjF6dGK_EUSnCTjAp3IZlZNx0';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- 多语言配置 ---
+    const TRANSLATIONS = {
+        zh: {
+            library: "我的词书库",
+            newDeck: "新建词书",
+            settings: "设置",
+            import: "导入",
+            account: "账户",
+            loginTitle: "登录 FlashCraft",
+            loginDesc: "使用邮箱魔法链接登录（无需密码）。",
+            emailPlaceholder: "邮箱地址",
+            sendMagicLink: "发送魔法链接",
+            magicLinkSent: "已发送，请检查邮箱",
+            signOut: "退出登录",
+            loading: "加载中…",
+            pro: "Pro",
+            free: "免费",
+            upgrade: "升级 Pro",
+            redeemCode: "兑换码",
+            redeem: "兑换",
+            codePlaceholder: "输入兑换码…",
+            admin: "管理员",
+            openAdmin: "打开后台",
+            share: "分享",
+            shareCode: "分享码",
+            shareSettings: "分享设置",
+            shareDesc: "任何获得分享码的人都可以导入该词书（对方会获得独立副本）。",
+            notShared: "未开启分享",
+            disableShare: "关闭分享",
+            updateShare: "更新分享码",
+            regenerate: "重新生成",
+            shareHint: "建议格式：FC-8X92",
+            shareUpdated: "分享码已更新",
+            shareDisabled: "已关闭分享",
+            shareInvalid: "分享码格式不正确",
+            shareTaken: "该分享码已被占用，请换一个",
+            importShared: "导入分享词书",
+            enterShareCode: "输入分享码（如 FC-8X92）",
+            generateShareCode: "生成分享码",
+            copy: "复制",
+            adminDashboard: "管理员面板",
+            userCount: "用户数",
+            proCount: "Pro 用户",
+            generateCode: "生成兑换码",
+            redeemSuccess: "已开通 Pro！",
+            redeemInvalid: "兑换码无效或已使用",
+            proUnlockedTitle: "Pro 已解锁",
+            proUnlockedDesc: "无限词书，尽情创作。",
+            proUnlockedBtn: "太棒了",
+            proWelcomeTitle: "欢迎回来，Pro",
+            proWelcomeDesc: "无限词书已为你解锁。继续创作吧。",
+            proWelcomeBtn: "开始创作",
+            exportBackup: "导出备份",
+            resetData: "重置所有数据",
+            reduceMotion: "减弱动效",
+            language: "语言 / Language",
+            author: "作者联系方式",
+            exportManager: "导出管理",
+            selectDeck: "选择词书...",
+            exportBtn: "导出词书",
+            importWizard: "智能导入向导",
+            importStep1: "1. AI 提示词助手",
+            importStep2: "2. 粘贴内容 / 上传文件",
+            copyPrompt: "复制提示词",
+            parseImport: "解析并导入",
+            parseAndAccumulate: "解析并累计",
+            finalizeImport: "创建词书",
+            accumulatedCards: "已累计",
+            importNeedCards: "请先解析至少 1 条 JSON",
+            deckTitleLabel: "词书标题（必填）",
+            deckDescLabel: "描述（可选）",
+            parseMode: "解析模式",
+            parseAuto: "自动",
+            parseJsonOnly: "只解析 JSON",
+            parseTxtOnly: "只解析 TXT",
+            parseModeTip: "如果模型输出纯文本/代码块，选 TXT；纯 JSON 选 JSON；默认自动",
+            appendImport: "追加导入",
+            appendImportTitle: "追加导入到当前词书",
+            appendImportDesc: "支持多次导入，只会追加卡片，不会覆盖标题/描述。",
+            appendImportBtn: "解析并追加",
+            appendedCards: "已追加卡片",
+            guideWelcome: "欢迎来到 FlashCraft",
+            guideDesc: "您的极简记忆工坊。",
+            guideFeaturesTitle: "你可以做什么",
+            guideF1Title: "创建词书",
+            guideF1Desc: "用 Markdown & LaTeX 写卡片。",
+            guideF2Title: "AI 智能导入",
+            guideF2Desc: "复制提示词，让 AI 生成 JSON 一键导入。",
+            guideF3Title: "学习进度",
+            guideF3Desc: "进度自动保存，随时继续。",
+            guideF4Title: "分享与复制",
+            guideF4Desc: "分享码让朋友导入独立副本。",
+            guideF5Title: "Pro 解锁",
+            guideF5Desc: "免费 5 本，Pro 无限。",
+            aiGuideTitle: "AI 导入怎么用？",
+            aiGuide1: "1) 设置总张数 / 每次上限，然后点「复制提示词」",
+            aiGuide2: "2) 粘贴到 GPT/豆包，并把资料/文本一起发给它（无需 title/desc）",
+            aiGuide3: "3) 复制它返回的第一段 JSON 到下方输入框",
+            aiGuide4: "4) 填写上面的词书标题/描述 → 点「解析并累计」",
+            aiGuide5: "5) 如果返回 has_more=true，在 AI 里只输入「继续」生成下一段 JSON",
+            aiGuide6: "6) 后续 JSON：继续点「解析并累计」累加卡片",
+            aiGuide7: "7) has_more=false 后，点击「创建词书」一次性导入",
+            aiGuide8: "小贴士：每次只粘贴一段完整 JSON（不要一次粘多段）",
+            continueOnly: "后续只需在 AI 里回复一个词：继续（不要再粘提示词/标题/解释）。",
+            continueOnlyShort: "后续只回：继续",
+            watchHasMore: "看到 has_more=false 就停止，让 AI 告诉你可以去 FlashCraft 导入。",
+            aiTotal: "目标总张数",
+            aiBatch: "每次输出上限",
+            aiSuggested: "建议：总张数 60~120，每次 10~20（太长就降低）",
+            appendGuideTitle: "追加导入怎么用？",
+            appendGuide1: "1) 设置总张数 / 每次上限，然后点「复制提示词」",
+            appendGuide2: "2) 粘贴到 GPT/豆包，并把资料/文本一起发给它",
+            appendGuide3: "3) 复制 AI 返回的 JSON 到下方输入框",
+            appendGuide4: "4) 点击「解析并追加」把卡片追加进当前词书",
+            appendGuide5: "5) 若 has_more=true，回到 AI 输入「继续」，再追加下一段 JSON",
+            guideStart: "开始使用",
+            cards: "张卡片",
+            deckTitle: "词书标题",
+            deckDesc: "描述",
+            theme: "主题色",
+            addCard: "添加新卡片 (支持 Markdown)",
+            front: "正面 (问题)",
+            back: "背面 (答案)",
+            done: "完成",
+            shuffle: "乱序播放",
+            restart: "重新开始",
+            promptCopied: "提示词已复制！",
+            manualCopy: "请手动复制",
+            contentEmpty: "内容为空",
+            formatError: "格式无法识别，请检查。",
+            resetConfirm: "确定要重置所有数据吗？此操作无法撤销。",
+            deleteConfirm: "确定要删除这本词书吗？",
+            contactCopied: "联系方式已复制",
+            magicLinkTipTitle: "Magic Link 提示",
+            magicLinkTip1: "请在当前设备（同一浏览器）打开邮箱并点击登录链接完成验证。",
+            magicLinkTip2: "若你在共享/陌生设备误点了链接，登录后可在「设置 → 退出登录」退出。",
+            ok: "知道了",
+            poweredBy: "由 Supabase 提供支持",
+            sortDefault: "默认",
+            sortColor: "颜色",
+            sortCount: "数量",
+            edit: "编辑",
+            delete: "删除",
+            deleted: "已删除",
+            deckRemoved: "词书已删除",
+            resetDone: "完成",
+            untitled: "未命名",
+            imported: "已导入",
+            aiGenerated: "AI 生成",
+            deckCopied: "已复制",
+            shareGenerateFailed: "生成分享码失败",
+            shareGenerateUniqueFailed: "分享码冲突，请重试",
+            noDescription: "暂无描述",
+            backNav: "返回",
+            add: "添加",
+            descPlaceholder: "添加一句简介…",
+            tapToFlip: "点击翻面",
+            upload: "上传",
+            pasteJsonPlaceholder: "粘贴 JSON 或 TXT...",
+            importedTextDeckTitle: "导入文本词书",
+            importedOn: "导入于",
+            pricingFreeBadge: "5 本",
+            pricingFreeDesc: "你已达到免费词书上限，升级 Pro 解锁更多词书与高级功能。",
+            pricingProBadge: "无限",
+            pricingProDesc: "使用兑换码即可为当前账号开通 Pro。",
+            adminLoadFailed: "加载统计失败（可能是 RLS）",
+            adminEmptyCode: "生成的兑换码为空"
+        },
+        en: {
+            library: "My Library",
+            newDeck: "New Deck",
+            settings: "Settings",
+            import: "Import",
+            account: "Account",
+            loginTitle: "Sign in to FlashCraft",
+            loginDesc: "Magic link login with email (no password).",
+            emailPlaceholder: "Email address",
+            sendMagicLink: "Send Magic Link",
+            magicLinkSent: "Sent! Check your inbox",
+            signOut: "Sign out",
+            loading: "Loading…",
+            pro: "Pro",
+            free: "Free",
+            upgrade: "Upgrade to Pro",
+            redeemCode: "Redeem Code",
+            redeem: "Redeem",
+            codePlaceholder: "Enter code…",
+            admin: "Admin",
+            openAdmin: "Open Admin",
+            share: "Share",
+            shareCode: "Share Code",
+            shareSettings: "Share Settings",
+            shareDesc: "Anyone with the code can import this deck (they get an independent copy).",
+            notShared: "Sharing is off",
+            disableShare: "Disable sharing",
+            updateShare: "Update code",
+            regenerate: "Regenerate",
+            shareHint: "Suggested: FC-8X92",
+            shareUpdated: "Share code updated",
+            shareDisabled: "Sharing disabled",
+            shareInvalid: "Invalid share code format",
+            shareTaken: "That code is taken. Try another one.",
+            importShared: "Import Shared Deck",
+            enterShareCode: "Enter share code (e.g., FC-8X92)",
+            generateShareCode: "Generate Code",
+            copy: "Copy",
+            adminDashboard: "Admin Dashboard",
+            userCount: "Users",
+            proCount: "Pro Users",
+            generateCode: "Generate Code",
+            redeemSuccess: "Pro activated!",
+            redeemInvalid: "Invalid or used code",
+            proUnlockedTitle: "Pro unlocked",
+            proUnlockedDesc: "Unlimited decks. Keep crafting.",
+            proUnlockedBtn: "Nice",
+            proWelcomeTitle: "Welcome back, Pro",
+            proWelcomeDesc: "Unlimited decks are unlocked. Keep crafting.",
+            proWelcomeBtn: "Continue",
+            exportBackup: "Export Backup",
+            resetData: "Reset All Data",
+            reduceMotion: "Reduce Motion",
+            language: "Language",
+            author: "Author Contact",
+            exportManager: "Export Manager",
+            selectDeck: "Select a Deck...",
+            exportBtn: "Export Deck",
+            importWizard: "Import Wizard",
+            importStep1: "1. AI Prompt Helper",
+            importStep2: "2. Paste Content / Upload",
+            copyPrompt: "Copy Prompt",
+            parseImport: "Parse & Import",
+            parseAndAccumulate: "Parse & Accumulate",
+            finalizeImport: "Create Deck",
+            accumulatedCards: "Accumulated",
+            importNeedCards: "Parse at least one JSON first",
+            deckTitleLabel: "Deck Title (required)",
+            deckDescLabel: "Description (optional)",
+            parseMode: "Parse Mode",
+            parseAuto: "Auto",
+            parseJsonOnly: "JSON only",
+            parseTxtOnly: "TXT only",
+            parseModeTip: "If your LLM outputs plain text/markdown, choose TXT; if pure JSON, choose JSON. Auto tries JSON then TXT.",
+            appendImport: "Append Import",
+            appendImportTitle: "Append into this deck",
+            appendImportDesc: "You can import multiple times. Cards will be appended without overwriting title/desc.",
+            appendImportBtn: "Parse & Append",
+            appendedCards: "Cards appended",
+            guideWelcome: "Welcome to FlashCraft",
+            guideDesc: "Your minimalist memory workshop.",
+            guideFeaturesTitle: "What you can do",
+            guideF1Title: "Create decks",
+            guideF1Desc: "Write cards with Markdown & LaTeX.",
+            guideF2Title: "AI import",
+            guideF2Desc: "Copy the prompt, ask an LLM to output JSON, then import.",
+            guideF3Title: "Study progress",
+            guideF3Desc: "Progress is saved automatically.",
+            guideF4Title: "Share & copy",
+            guideF4Desc: "Share code lets others import an independent copy.",
+            guideF5Title: "Go Pro",
+            guideF5Desc: "Free: 5 decks. Pro: unlimited.",
+            aiGuideTitle: "How to use AI import?",
+            aiGuide1: "1) Set TOTAL / MAX_PER_REPLY, then click Copy Prompt",
+            aiGuide2: "2) Paste into GPT/Doubao with your source text (no title/desc needed)",
+            aiGuide3: "3) Copy the first JSON into the box below",
+            aiGuide4: "4) Fill title/desc above → Click Parse & Accumulate",
+            aiGuide5: "5) If has_more=true, reply with just: 继续 to get next JSON",
+            aiGuide6: "6) Keep Parse & Accumulate for each JSON chunk",
+            aiGuide7: "7) When has_more=false, click Create Deck to import all cards",
+            aiGuide8: "Tip: paste ONE complete JSON each time (don’t paste multiple outputs at once).",
+            continueOnly: "After the first reply, just send a single word: 继续 (no prompt, no title, no explanations).",
+            continueOnlyShort: "Next replies: 继续 only",
+            watchHasMore: "When has_more=false, stop asking; the AI should tell you to import in FlashCraft.",
+            aiTotal: "TOTAL",
+            aiBatch: "MAX_PER_REPLY",
+            aiSuggested: "Suggested: TOTAL 60–120, MAX_PER_REPLY 10–20 (lower if truncated).",
+            appendGuideTitle: "How to append import?",
+            appendGuide1: "1) Set TOTAL / MAX_PER_REPLY, then click Copy Prompt",
+            appendGuide2: "2) Paste into ChatGPT or Doubao, then paste your source text",
+            appendGuide3: "3) Copy the JSON into the box below",
+            appendGuide4: "4) Click Parse & Append to add cards into this deck",
+            appendGuide5: "5) If has_more=true, reply with 继续 in the LLM and append the next JSON",
+            guideStart: "Get Started",
+            cards: "Cards",
+            deckTitle: "Deck Title",
+            deckDesc: "Description",
+            theme: "Theme",
+            addCard: "Add Card (Markdown Supported)",
+            front: "Front (Question)",
+            back: "Back (Answer)",
+            done: "Done",
+            shuffle: "Shuffle",
+            restart: "Restart",
+            promptCopied: "Prompt Copied!",
+            manualCopy: "Please copy manually",
+            contentEmpty: "Content is empty",
+            formatError: "Format not recognized.",
+            resetConfirm: "Reset all data? This cannot be undone.",
+            deleteConfirm: "Delete this deck?",
+            contactCopied: "Contact copied",
+            magicLinkTipTitle: "Magic Link tip",
+            magicLinkTip1: "Open your email and click the sign‑in link on this same device/browser.",
+            magicLinkTip2: "On a shared device, sign out after use (Settings → Sign out).",
+            ok: "OK",
+            poweredBy: "Powered by Supabase",
+            sortDefault: "Default",
+            sortColor: "Color",
+            sortCount: "Count",
+            edit: "Edit",
+            delete: "Delete",
+            deleted: "Deleted",
+            deckRemoved: "Deck removed.",
+            resetDone: "Done.",
+            untitled: "Untitled",
+            imported: "Imported",
+            aiGenerated: "AI Generated",
+            deckCopied: "Deck copied.",
+            shareGenerateFailed: "Failed to generate share code.",
+            shareGenerateUniqueFailed: "Failed to generate a unique share code. Please try again.",
+            noDescription: "No description.",
+            backNav: "Back",
+            add: "Add",
+            descPlaceholder: "Add a brief description...",
+            tapToFlip: "Tap to Flip",
+            upload: "Upload",
+            pasteJsonPlaceholder: "Paste JSON or TXT...",
+            importedTextDeckTitle: "Imported Text Deck",
+            importedOn: "Imported on",
+            pricingFreeBadge: "5 decks",
+            pricingFreeDesc: "Deck limit reached. Upgrade to unlock more decks and pro features.",
+            pricingProBadge: "Unlimited",
+            pricingProDesc: "Use a redemption code to activate Pro on your account.",
+            adminLoadFailed: "Failed to load stats. (RLS?)",
+            adminEmptyCode: "Generated an empty code."
+        }
+    };
+
+    // --- 图标组件 ---
+    const Icon = ({ name, size = 20, className = "" }) => {
+      const ref = useRef(null);
+      useLayoutEffect(() => {
+        if (ref.current) {
+            ref.current.innerHTML = '';
+            const i = document.createElement('i');
+            i.setAttribute('data-lucide', name);
+            i.setAttribute('width', size);
+            i.setAttribute('height', size);
+            if (className) i.setAttribute('class', className);
+            ref.current.appendChild(i);
+            lucide.createIcons({ root: ref.current, nameAttr: 'data-lucide' });
+        }
+      }, [name, size, className]);
+      return <span ref={ref} className="inline-flex items-center justify-center"></span>;
+    };
+
+    // --- Toast (CFDS) ---
+    const Toast = ({ toast, onDismiss }) => {
+        if (!toast) return null;
+
+        const variantStyles = {
+            success: { icon: 'check', ring: 'ring-craft-yellow/30' },
+            error: { icon: 'alert-circle', ring: 'ring-red-500/20' },
+            info: { icon: 'sparkles', ring: 'ring-white/10' }
+        };
+        const v = variantStyles[toast.variant || 'info'] || variantStyles.info;
+
+        return (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] px-6">
+                <button
+                    onClick={onDismiss}
+                    className={`w-full max-w-[520px] bg-craft-black text-white rounded-2xl shadow-2xl border border-white/5 ring-1 ${v.ring} px-4 py-3 flex items-start gap-3 transition-all ${toast.leaving ? 'animate-fade-out' : 'animate-toast-in'} active:scale-95`}
+                >
+                    <div className="mt-0.5 text-craft-yellow shrink-0">
+                        <Icon name={toast.icon || v.icon} size={18} />
+                    </div>
+                    <div className="flex-1 text-left">
+                        {toast.title && <div className="text-sm font-bold leading-tight">{toast.title}</div>}
+                        {toast.message && <div className="text-xs text-white/70 mt-0.5 leading-relaxed font-medium">{toast.message}</div>}
+                    </div>
+                    <div className="text-white/40 mt-0.5">
+                        <Icon name="x" size={16} />
+                    </div>
+                </button>
+            </div>
+        );
+    };
+
+    // --- 智能字体大小 ---
+    const getSmartFontSize = (text, isFront) => {
+        const len = text ? text.length : 0;
+        if (isFront) {
+            if (len < 10) return 'text-4xl md:text-5xl lg:text-6xl font-black';
+            if (len < 30) return 'text-3xl md:text-4xl font-bold';
+            if (len < 60) return 'text-2xl md:text-3xl font-bold';
+            return 'text-xl md:text-2xl font-semibold';
+        } else {
+            if (len < 20) return 'text-3xl md:text-4xl font-bold';
+            if (len < 100) return 'text-xl md:text-2xl font-medium';
+            if (len < 300) return 'text-lg md:text-xl';
+            return 'text-base md:text-lg';
+        }
+    };
+
+    // --- Markdown Card ---
+    // --- Enhanced Math Cleaner ---
+    const preprocessMath = (text) => {
+      if (!text) return '';
+      let t = text;
+
+      // 1. Normalize delimiters: \( -> $ and \[ -> $$
+      // handle double-escaped first
+      t = t.replace(/\\\\\(/g, '$').replace(/\\\\\)/g, '$');
+      t = t.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+      t = t.replace(/\\\\\[/g, '$$$').replace(/\\\\\]/g, '$$$');
+      t = t.replace(/\\\[/g, '$$$').replace(/\\\]/g, '$$$');
+
+      // 2. Fix corrupted \frac (form-feed \f etc.)
+      t = t.replace(/[\f\v\r\t\n\u0000-\u001f\u007f-\u009f]\s*rac\{/g, '\\frac{');
+      t = t.replace(/(^|[^a-zA-Z\\])rac\{/g, '$1\\frac{');
+
+      // 3. Other common corruptions
+      t = t.replace(/[\f\v]\s*sqrt/g, '\\sqrt');
+      t = t.replace(/[\f\v]\s*sum/g, '\\sum');
+
+      return t;
+    };
+
+    const MarkdownCard = memo(({ content, className }) => {
+      const containerRef = useRef(null);
+      
+      const htmlContent = useMemo(() => {
+        if (!window.markdownit) return '';
+        const md = window.markdownit({
+            html: false, 
+            breaks: true, 
+            linkify: true,
+            typographer: true
+        });
+        return md.render(preprocessMath(content || ''));
+      }, [content]);
+
+      useEffect(() => {
+        if (containerRef.current && window.renderMathInElement) {
+          try {
+            renderMathInElement(containerRef.current, {
+              delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "\\[", right: "\\]", display: true}
+              ],
+              throwOnError: false
+            });
+          } catch (e) { console.error("KaTeX error", e); }
+        }
+      }, [htmlContent]);
+
+      return (
+        <div 
+            ref={containerRef} 
+            className={`markdown-body ${className}`}
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+      );
+    });
+
+    // --- 初始数据 ---
+    const INITIAL_DECKS = [
+      {
+        id: 'deck-1',
+        title: 'Design Philosophy',
+        desc: 'Core principles of minimalism.',
+        color: '#171717', 
+        progressIndex: 0,
+        cards: [
+          { id: 'c1', front: '**Less is More**', back: 'Remove non-essentials to focus on what matters.' },
+          { id: 'c2', front: 'White Space', back: 'Negative space is a design element, not just empty background.' },
+        ]
+      },
+      {
+        id: 'deck-2',
+        title: 'Physics',
+        desc: 'Math demo with LaTeX.',
+        color: '#facc15',
+        progressIndex: 0, 
+        cards: [
+          { id: 'c4', front: 'Mass-Energy Equivalence', back: '$$E = mc^2$$' },
+          { id: 'c5', front: 'Schrödinger Equation', back: '$$i\\hbar\\frac{\\partial}{\\partial t} \\Psi = \\hat{H}\\Psi$$\n\nDescribes how the quantum state of a physical system changes with time.' },
+        ]
+      }
+    ];
+
+    // --- Supabase Deck Mapping Helpers ---
+    const normalizeCards = (cards) => {
+        const safe = Array.isArray(cards) ? cards : [];
+        return safe.map((c, idx) => ({
+            id: c?.id || `c-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+            front: c?.front || '',
+            back: c?.back || ''
+        }));
+    };
+
+    const rowToDeck = (row) => {
+        const content = (row && typeof row.content === 'object' && row.content) ? row.content : {};
+        return {
+            id: row.id,
+            user_id: row.user_id,
+            share_code: row.share_code || null,
+            created_at: row.created_at || null,
+            title: content.title || 'Untitled',
+            desc: content.desc || '',
+            color: content.color || '#171717',
+            progressIndex: Number.isFinite(content.progressIndex) ? content.progressIndex : 0,
+            cards: normalizeCards(content.cards)
+        };
+    };
+
+    const deckToContent = (deck) => ({
+        title: deck.title || 'Untitled',
+        desc: deck.desc || '',
+        color: deck.color || '#171717',
+        progressIndex: Number.isFinite(deck.progressIndex) ? deck.progressIndex : 0,
+        cards: normalizeCards(deck.cards)
+    });
+
+    const generateRandomShareCode = () => {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const suffix = Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+        return `FC-${suffix}`;
+    };
+
+    const normalizeShareCode = (raw) => {
+        const cleaned = (raw || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        if (!cleaned) return null;
+        if (cleaned.startsWith('FC-')) {
+            const suffix = cleaned.slice(3);
+            if (!/^[A-Z0-9]{4,12}$/.test(suffix)) return null;
+            return `FC-${suffix}`;
+        }
+        if (/^[A-Z0-9]{4,12}$/.test(cleaned)) return `FC-${cleaned}`;
+        return null;
+    };
+
+    // --- Settings Modal (With Language & Contact) ---
+    const SettingsModal = ({ isOpen, onClose, onReset, decks, onExportSingle, reduceMotion, toggleMotion, lang, setLang, user, onSignOut, onRedeemCode, onOpenAdmin, onToast }) => {
+      const [selectedDeckId, setSelectedDeckId] = useState('');
+      const [exportFormat, setExportFormat] = useState('json');
+      const [redeemInput, setRedeemInput] = useState('');
+      const [isRedeeming, setIsRedeeming] = useState(false);
+      const t = TRANSLATIONS[lang];
+
+      if (!isOpen) return null;
+
+      const handleExport = () => {
+          if (!selectedDeckId) return onToast?.({ variant: 'error', title: t.exportManager, message: t.selectDeck });
+          const deck = decks.find(d => d.id === selectedDeckId);
+          if (!deck) return;
+          onExportSingle(deck, exportFormat);
+      };
+
+      const copyContact = () => {
+          navigator.clipboard.writeText('2014184720@qq.com');
+          onToast?.({ variant: 'success', title: t.author, message: t.contactCopied, icon: 'copy' });
+      };
+
+        const handleRedeem = async () => {
+          const code = redeemInput.trim();
+          if (!code) return;
+          setIsRedeeming(true);
+          const result = await onRedeemCode(code);
+          setIsRedeeming(false);
+          if (result?.ok) {
+              setRedeemInput('');
+              onToast?.({ variant: 'success', title: t.pro, message: t.redeemSuccess, icon: 'sparkles' });
+          } else {
+              if (result?.kind === 'error' && result?.message) onToast?.({ variant: 'error', title: t.redeemCode, message: result.message });
+              else onToast?.({ variant: 'error', title: t.redeemCode, message: t.redeemInvalid });
+          }
+      };
+
+      return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+            <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-craft-black flex items-center gap-2">
+                        <Icon name="settings" className="text-craft-yellow" fill="currentColor" /> {t.settings}
+                    </h3>
+                    <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                </div>
+                <div className="p-6 space-y-6 bg-[#f9f9fb] max-h-[70vh] overflow-y-auto">
+
+                    {/* Account */}
+                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Icon name="user" size={16} className="text-craft-black"/>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.account}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${user?.is_pro ? 'bg-craft-yellow/20 text-craft-black border-craft-yellow/30' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                                {user?.is_pro ? t.pro : t.free}
+                            </span>
+                        </div>
+                        <div className="text-sm font-mono font-bold text-craft-black">{user?.email || '-'}</div>
+                        <button
+                            onClick={onSignOut}
+                            className="w-full py-2.5 rounded-xl font-bold text-sm bg-white border border-gray-200 hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95"
+                        >
+                            {t.signOut}
+                        </button>
+                    </div>
+
+                    {/* Redeem Pro Code */}
+                    {!user?.is_pro && (
+                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Icon name="ticket" size={16} className="text-craft-yellow"/>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.redeemCode}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    value={redeemInput}
+                                    onChange={(e) => setRedeemInput(e.target.value)}
+                                    placeholder={t.codePlaceholder}
+                                    className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white transition-colors"
+                                />
+                                <button
+                                    onClick={handleRedeem}
+                                    disabled={!redeemInput.trim() || isRedeeming}
+                                    className={`px-4 py-3 rounded-xl font-bold text-xs transition-all active:scale-95 ${redeemInput.trim() && !isRedeeming ? 'bg-craft-black text-white hover:bg-gray-800 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                >
+                                    {isRedeeming ? t.loading : t.redeem}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Admin */}
+                    {user?.role === 'admin' && (
+                        <button
+                            onClick={onOpenAdmin}
+                            className="w-full flex items-center justify-between p-3 bg-craft-yellow/20 hover:bg-craft-yellow/30 rounded-xl border border-craft-yellow/30 shadow-sm transition-all group active:scale-95"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-white/60 text-craft-black flex items-center justify-center">
+                                    <Icon name="shield" size={16} />
+                                </div>
+                                <span className="text-sm font-bold text-craft-black">{t.adminDashboard}</span>
+                            </div>
+                            <Icon name="chevron-right" size={18} className="text-craft-black/60 group-hover:text-craft-black transition-colors" />
+                        </button>
+                    )}
+                    
+                    {/* Language Toggle */}
+                    <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.language}</label>
+                        <div className="flex gap-2">
+                            <button onClick={() => setLang('zh')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${lang === 'zh' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>中文</button>
+                            <button onClick={() => setLang('en')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${lang === 'en' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>English</button>
+                        </div>
+                    </div>
+
+                    {/* Motion Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600"><Icon name="zap" size={16} /></div>
+                            <span className="text-sm font-medium text-gray-700">{t.reduceMotion}</span>
+                        </div>
+                        <button 
+                            onClick={toggleMotion}
+                            className={`w-11 h-6 rounded-full transition-all relative ${reduceMotion ? 'bg-craft-black' : 'bg-gray-200'}`}
+                        >
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform ${reduceMotion ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                    </div>
+
+                    {/* Export Manager */}
+                    <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Icon name="download" size={16} className="text-blue-600"/>
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.exportManager}</span>
+                        </div>
+                        
+                        <select 
+                            className="w-full p-2 rounded-lg border border-gray-200 text-sm focus:border-black outline-none bg-gray-50"
+                            value={selectedDeckId}
+                            onChange={(e) => setSelectedDeckId(e.target.value)}
+                        >
+                            <option value="">{t.selectDeck}</option>
+                            {decks.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+                        </select>
+
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setExportFormat('json')}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${exportFormat === 'json' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}
+                            >
+                                JSON
+                            </button>
+                            <button 
+                                onClick={() => setExportFormat('txt')}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${exportFormat === 'txt' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}
+                            >
+                                TXT
+                            </button>
+                        </div>
+
+                        <button 
+                            onClick={handleExport}
+                            disabled={!selectedDeckId}
+                            className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all ${selectedDeckId ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                        >
+                            {t.exportBtn}
+                        </button>
+                    </div>
+
+                    {/* Contact Author */}
+                    <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 shadow-inner text-center cursor-pointer hover:bg-gray-200 transition-colors group" onClick={copyContact}>
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.author}</div>
+                        <div className="text-sm font-mono font-bold text-craft-black flex items-center justify-center gap-2">
+                            2014184720@qq.com <Icon name="copy" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                        </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <button onClick={onReset} className="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-xl border border-red-100 shadow-sm transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white/50 text-red-600 flex items-center justify-center"><Icon name="trash-2" size={16} /></div>
+                            <span className="text-sm font-medium text-red-600">{t.resetData}</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+      );
+    };
+
+    // --- Pricing Modal (Freemium Paywall) ---
+    const PricingModal = ({ isOpen, onClose, lang, onRedeemCode, onToast }) => {
+        if (!isOpen) return null;
+        const t = TRANSLATIONS[lang];
+        const [redeemInput, setRedeemInput] = useState('');
+        const [isRedeeming, setIsRedeeming] = useState(false);
+
+        const handleRedeem = async () => {
+            const code = redeemInput.trim();
+            if (!code) return;
+            setIsRedeeming(true);
+            const result = await onRedeemCode(code);
+            setIsRedeeming(false);
+            if (result?.ok) {
+                setRedeemInput('');
+                onToast?.({ variant: 'success', title: t.pro, message: t.redeemSuccess, icon: 'sparkles' });
+                onClose();
+            } else {
+                if (result?.kind === 'error' && result?.message) onToast?.({ variant: 'error', title: t.redeemCode, message: result.message });
+                else onToast?.({ variant: 'error', title: t.redeemCode, message: t.redeemInvalid });
+            }
+        };
+        return (
+            <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-craft-black flex items-center gap-2">
+                            <Icon name="sparkles" className="text-craft-yellow" fill="currentColor" /> {t.upgrade}
+                        </h3>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="p-6 bg-[#f9f9fb] space-y-4">
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-craft-black">{t.free}</span>
+                                <span className="text-xs font-mono text-gray-400">{t.pricingFreeBadge}</span>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500 leading-relaxed">
+                                {t.pricingFreeDesc}
+                            </div>
+                        </div>
+                        <div className="bg-craft-black text-white p-4 rounded-2xl shadow-lg">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold">{t.pro}</span>
+                                <span className="text-xs font-mono text-craft-yellow">{t.pricingProBadge}</span>
+                            </div>
+                            <div className="mt-2 text-xs text-white/70 leading-relaxed">
+                                {t.pricingProDesc}
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Icon name="ticket" size={16} className="text-craft-yellow"/>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.redeemCode}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    value={redeemInput}
+                                    onChange={(e) => setRedeemInput(e.target.value)}
+                                    placeholder={t.codePlaceholder}
+                                    className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white transition-colors"
+                                />
+                                <button
+                                    onClick={handleRedeem}
+                                    disabled={!redeemInput.trim() || isRedeeming}
+                                    className={`px-4 py-3 rounded-xl font-bold text-xs transition-all active:scale-95 ${redeemInput.trim() && !isRedeeming ? 'bg-craft-black text-white hover:bg-gray-800 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                >
+                                    {isRedeeming ? t.loading : t.redeem}
+                                </button>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="w-full py-3 bg-white border border-gray-200 hover:border-black hover:bg-black hover:text-white rounded-2xl font-bold transition-all shadow-sm active:scale-95">
+                            {t.ok}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Share Modal ---
+    const ShareModal = ({ isOpen, onClose, lang, deck, actions, onDeckPatch }) => {
+        if (!isOpen || !deck) return null;
+        const t = TRANSLATIONS[lang];
+        const [input, setInput] = useState(deck.share_code || '');
+        const [isWorking, setIsWorking] = useState(false);
+
+        useEffect(() => {
+            if (isOpen) setInput(deck.share_code || '');
+        }, [isOpen, deck.share_code]);
+
+        const current = deck.share_code || '';
+
+        const copy = async () => {
+            if (!current) return;
+            try {
+                await navigator.clipboard.writeText(current);
+                actions.toast?.({ variant: 'success', title: t.share, message: `${t.shareCode}: ${current}`, icon: 'copy' });
+            } catch (_) {
+                actions.toast?.({ variant: 'success', title: t.share, message: `${t.shareCode}: ${current}` });
+            }
+        };
+
+        const applyCustom = async () => {
+            setIsWorking(true);
+            const res = await actions.setShareCode?.(deck.id, input);
+            setIsWorking(false);
+            if (res?.ok) {
+                setInput(res.code || '');
+                onDeckPatch?.({ share_code: res.code || null });
+            }
+        };
+
+        const regen = async () => {
+            setIsWorking(true);
+            const code = await actions.generateShareCode?.(deck.id);
+            setIsWorking(false);
+            if (code) {
+                setInput(code);
+                onDeckPatch?.({ share_code: code });
+            }
+        };
+
+        const disable = async () => {
+            setIsWorking(true);
+            await actions.setShareCode?.(deck.id, null);
+            setIsWorking(false);
+            setInput('');
+            onDeckPatch?.({ share_code: null });
+        };
+
+        const primaryLabel = current ? t.regenerate : t.generateShareCode;
+
+        return (
+            <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-craft-black flex items-center gap-2">
+                            <Icon name="share-2" className="text-craft-yellow" fill="currentColor" /> {t.shareSettings}
+                        </h3>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="p-6 bg-[#f9f9fb] space-y-4">
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{deck.title}</div>
+                            <div className="text-sm text-gray-600 leading-relaxed">{t.shareDesc}</div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.shareCode}</span>
+                                {current ? (
+                                    <span className="text-[10px] font-mono text-gray-400">{current}</span>
+                                ) : (
+                                    <span className="text-[10px] font-bold text-gray-300">{t.notShared}</span>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={regen}
+                                    disabled={isWorking}
+                                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-95 ${isWorking ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-craft-black text-white hover:bg-gray-800'}`}
+                                >
+                                    {isWorking ? t.loading : primaryLabel}
+                                </button>
+                                <button
+                                    onClick={copy}
+                                    disabled={!current || isWorking}
+                                    className={`px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-95 ${current && !isWorking ? 'bg-white border border-gray-200 hover:border-black' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                >
+                                    <Icon name="copy" size={16} />
+                                </button>
+                            </div>
+                            {current && (
+                                <button
+                                    onClick={disable}
+                                    disabled={isWorking}
+                                    className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 ${isWorking ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'}`}
+                                >
+                                    {t.disableShare}
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.updateShare}</span>
+                                <span className="text-[10px] font-mono text-gray-400">{t.shareHint}</span>
+                            </div>
+                            <input
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="FC-8X92"
+                                className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-sm bg-white transition-colors"
+                            />
+                            <button
+                                onClick={applyCustom}
+                                disabled={isWorking || !input.trim()}
+                                className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-95 ${(!input.trim() || isWorking) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border border-gray-200 hover:border-black hover:bg-black hover:text-white'}`}
+                            >
+                                {t.updateShare}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Admin Modal ---
+    const AdminModal = ({ isOpen, onClose, lang, user }) => {
+        const t = TRANSLATIONS[lang];
+        const [userCount, setUserCount] = useState(null);
+        const [proCount, setProCount] = useState(null);
+        const [isLoading, setIsLoading] = useState(false);
+        const [isGenerating, setIsGenerating] = useState(false);
+        const [error, setError] = useState(null);
+        const [lastCode, setLastCode] = useState(null);
+
+        const isFunctionMissingError = (err) => {
+            const code = err?.code || '';
+            const msg = (err?.message || '').toLowerCase();
+            return code === 'PGRST202' || msg.includes('could not find the function') || msg.includes('schema cache');
+        };
+
+        useEffect(() => {
+            if (!isOpen) return;
+            let cancelled = false;
+            const loadStats = async () => {
+                setIsLoading(true);
+                setError(null);
+
+                // Prefer RPC (works with strict RLS)
+                const rpc = await supabase.rpc('admin_get_stats');
+                if (!cancelled && !rpc.error) {
+                    const stats = rpc.data || {};
+                    const u = Number.isFinite(stats.user_count) ? stats.user_count : (stats.user_count ?? null);
+                    const p = Number.isFinite(stats.pro_count) ? stats.pro_count : (stats.pro_count ?? null);
+                    setUserCount(u);
+                    setProCount(p);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Fallback: direct count (may be blocked by RLS)
+                if (!cancelled && rpc.error && !isFunctionMissingError(rpc.error)) {
+                    setError(rpc.error.message);
+                }
+
+                const [{ count: allCount, error: allErr }, { count: proC, error: proErr }] = await Promise.all([
+                    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+                    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true)
+                ]);
+                if (cancelled) return;
+                if (allErr || proErr) {
+                    setError(allErr?.message || proErr?.message || t.adminLoadFailed);
+                }
+                setUserCount(allCount ?? null);
+                setProCount(proC ?? null);
+                setIsLoading(false);
+            };
+            loadStats();
+            return () => { cancelled = true; };
+        }, [isOpen]);
+
+        const generateRedemptionCode = async () => {
+            setError(null);
+            setIsGenerating(true);
+
+            // Prefer RPC (admin-only, secure)
+            const rpc = await supabase.rpc('admin_generate_redemption_code');
+            if (!rpc.error) {
+                const code = typeof rpc.data === 'string' ? rpc.data : (rpc.data?.code || null);
+                if (!code) {
+                    setError(t.adminEmptyCode);
+                    setIsGenerating(false);
+                    return;
+                }
+                setLastCode(code);
+                try { await navigator.clipboard.writeText(code); } catch (_) {}
+                setIsGenerating(false);
+                return;
+            }
+
+            if (!isFunctionMissingError(rpc.error)) {
+                setError(rpc.error.message);
+                setIsGenerating(false);
+                return;
+            }
+
+            // Fallback: direct insert (requires table privileges / RLS off or admin policy)
+            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const suffix = Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+            const code = `PRO-${suffix}`;
+
+            let res = await supabase
+                .from('redemption_codes')
+                .insert({ code, is_used: false, created_by: user?.id })
+                .select('code')
+                .single();
+
+            if (res.error && (res.error.message || '').toLowerCase().includes('created_by')) {
+                res = await supabase
+                    .from('redemption_codes')
+                    .insert({ code, is_used: false })
+                    .select('code')
+                    .single();
+            }
+
+            if (res.error) {
+                setError(res.error.message);
+                setIsGenerating(false);
+                return;
+            }
+
+            setLastCode(code);
+            try { await navigator.clipboard.writeText(code); } catch (_) {}
+            setIsGenerating(false);
+        };
+
+        if (!isOpen) return null;
+
+        return (
+            <div className="fixed inset-0 z-[230] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-craft-black flex items-center gap-2">
+                            <Icon name="shield" className="text-craft-yellow" fill="currentColor" /> {t.adminDashboard}
+                        </h3>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="p-6 bg-[#f9f9fb] space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.userCount}</div>
+                                <div className="mt-2 text-2xl font-bold text-craft-black">{isLoading ? '—' : (userCount ?? '—')}</div>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.proCount}</div>
+                                <div className="mt-2 text-2xl font-bold text-craft-black">{isLoading ? '—' : (proCount ?? '—')}</div>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 border border-red-100">
+                                <Icon name="alert-circle" size={16} /> {error}
+                            </div>
+                        )}
+
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.generateCode}</span>
+                                {lastCode && (
+                                    <span className="text-[10px] font-mono text-gray-400">{lastCode}</span>
+                                )}
+                            </div>
+                            <button onClick={generateRedemptionCode} disabled={isGenerating} className={`w-full py-3 rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${isGenerating ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-craft-black text-white hover:shadow-xl hover:-translate-y-0.5'}`}>
+                                {isGenerating ? t.loading : t.generateCode}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Home View (Updated Buttons Position) ---
+    const HomeView = ({ decks, actions, showGuide, sortMode, setSortMode, reduceMotion, lang, highlightDeckId, user }) => {
+        const sortedDecks = [...decks].sort((a, b) => {
+            if (sortMode === 'count') return b.cards.length - a.cards.length;
+            if (sortMode === 'color') return a.color.localeCompare(b.color);
+            return 0; 
+        });
+        const t = TRANSLATIONS[lang];
+
+        return (
+            <div className={`min-h-screen flex flex-col transition-all duration-700 ${showGuide ? 'blur-active pointer-events-none' : 'blur-clearing'}`}>
+                <header className="fixed top-0 w-full h-20 px-6 md:px-10 flex items-center justify-between z-50 glass">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-craft-black rounded-xl flex items-center justify-center shadow-lg group cursor-pointer hover:rotate-3 transition-transform">
+                            <span className="font-serif text-2xl font-bold text-white tracking-tighter group-hover:text-craft-yellow transition-colors">F</span>
+                        </div>
+                        <h1 className="text-xl font-bold tracking-tight text-craft-black hidden md:block">FlashCraft</h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-full border shadow-sm ${user?.is_pro ? 'bg-craft-yellow/20 border-craft-yellow/30 text-craft-black' : 'bg-white/60 border-gray-200 text-gray-500'}`}>
+                            {user?.role === 'admin' && <Icon name="shield" size={14} className="text-craft-black/60" />}
+                            <span className="text-[10px] font-mono font-bold tracking-widest">{user?.is_pro ? 'PRO' : 'FREE'}</span>
+                        </div>
+                        <button onClick={actions.openSettings} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.settings}>
+                            <Icon name="settings" size={20} />
+                        </button>
+                        <button onClick={actions.openImport} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.import}>
+                            <Icon name="download" size={20} />
+                        </button>
+                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
+                        <button onClick={actions.createDeck} className="flex items-center gap-2 px-5 py-2.5 bg-craft-black text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95">
+                            <Icon name="plus" size={18} />
+                            <span className="text-sm">{t.newDeck}</span>
+                        </button>
+                    </div>
+                </header>
+
+                <div className="flex-1 pt-32 px-6 md:px-10 pb-20 max-w-7xl mx-auto w-full">
+                    <div className="flex items-end justify-between mb-8">
+                        <div>
+                            <h2 className="text-2xl font-bold text-craft-black flex items-center gap-3">
+                                <Icon name="layout-grid" className="text-gray-400" /> {t.library}
+                            </h2>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                            <button onClick={() => setSortMode('default')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'default' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortDefault}</button>
+                            <button onClick={() => setSortMode('color')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'color' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortColor}</button>
+                            <button onClick={() => setSortMode('count')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'count' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortCount}</button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                        {sortedDecks.map((deck, idx) => {
+                            const isNew = deck.id === highlightDeckId;
+                            const total = deck.cards.length;
+                            const currentIndex = Number.isFinite(deck.progressIndex) ? deck.progressIndex : 0;
+                            const displayPercent = total <= 0 ? 0 : (currentIndex >= total - 1 ? 100 : Math.round((currentIndex / total) * 100));
+
+                            return (
+                                <div 
+                                    key={deck.id}
+                                    onClick={() => actions.startStudy(deck.id)}
+                                    className={`group relative aspect-[4/5] perspective-container cursor-pointer ${isNew ? 'animate-scale-in' : ''}`}
+                                    style={{ animationDelay: `${idx * 0.1}s` }}
+                                >
+                                    <div className={`w-full h-full bg-white rounded-[32px] p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl border border-white/50 shadow-sm hover:[animation-play-state:paused] ${reduceMotion ? 'animate-disabled' : 'animate-float'} ${isNew ? 'ring-2 ring-craft-yellow/25' : ''}`}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-mono font-bold text-white transition-all shadow-md group-hover:scale-110" style={{ backgroundColor: deck.color || '#171717' }}>
+                                                {(idx + 1).toString().padStart(2, '0')}
+                                            </span>
+                                            
+                                            {/* Top Right Action Bar (Fix Overlap) */}
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={e => e.stopPropagation()}>
+                                                <button 
+                                                    onClick={() => actions.editDeck(deck)} 
+                                                    className="p-2 text-gray-400 hover:text-craft-black bg-gray-50 hover:bg-gray-100 rounded-full transition-colors shadow-sm"
+                                                    title={t.edit}
+                                                >
+                                                    <Icon name="edit-2" size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => actions.deleteDeck(deck.id)} 
+                                                    className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full transition-colors shadow-sm"
+                                                    title={t.delete}
+                                                >
+                                                    <Icon name="trash-2" size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-craft-black leading-tight mb-3 line-clamp-2 group-hover:text-black transition-colors">{deck.title}</h3>
+                                            <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">{deck.desc || t.noDescription}</p>
+                                        </div>
+                                        
+                                        {/* Progress Bar (Clean Bottom) */}
+                                        <div className="pt-4 border-t border-gray-50">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 group-hover:text-craft-yellow transition-colors">
+                                                    <Icon name="layers" size={14} /> {total} {t.cards}
+                                                </div>
+                                                <span className="text-[10px] font-mono text-gray-300">{displayPercent}%</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-craft-black transition-all duration-500 group-hover:bg-craft-yellow" 
+                                                    style={{ width: `${displayPercent}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Append Import Modal (add cards into an existing deck) ---
+    const AppendImportModal = ({ isOpen, onClose, onAppendCards, lang, onToast }) => {
+        const [jsonInput, setJsonInput] = useState('');
+        const [errorMsg, setErrorMsg] = useState(null);
+        const [totalCards, setTotalCards] = useState(60);
+        const [maxPerReply, setMaxPerReply] = useState(15);
+        const fileInputRef = useRef(null);
+        const t = TRANSLATIONS[lang];
+        const [parserMode, setParserMode] = useState('auto');
+
+        useEffect(() => {
+            if (!isOpen) return;
+            setErrorMsg(null);
+        }, [isOpen]);
+
+        useEffect(() => {
+            setMaxPerReply(prev => Math.max(5, Math.min(prev, totalCards)));
+        }, [totalCards]);
+
+        const AI_PROMPT = lang === 'zh'
+            ? `你是 FlashCraft 卡片追加生成器。请基于我提供的资料，为“同一本词书”继续生成新卡片并分批输出。\n\n【参数】\n- 目标追加张数 TOTAL = ${totalCards}\n- 每次最多输出 MAX_PER_REPLY = ${maxPerReply}（可更少以防截断，但必须保证 JSON 完整）\n\n【输出规则（必须遵守）】\n1) 每次回复只能输出一个完整 JSON，不要解释、不要 Markdown、不要 \`\`\` 代码块。\n2) JSON 必须可直接 JSON.parse。\n3) 所有批次统一结构：{ \"has_more\": true/false, \"cards\": [{ \"front\": \"...\", \"back\": \"...\" }] }，不要输出 title/desc。\n4) cards 只允许 front/back；不要输出其它字段；front/back 不能为空；不要重复卡片。\n5) 支持公式请用 LaTeX，保持反斜杠：如 \\frac{GM}{r^2} 或 $E = mc^2$。\n6) 如果预计会被截断，减少本批 cards 数量，确保 JSON 完整闭合。\n7) 当你已生成满 TOTAL（或接近 TOTAL）时，把 has_more 设为 false 并停止。\n8) 如果 has_more 已是 false 而我还说“继续”，请回复：has_more 已是 false，请前往 FlashCraft 导入，且不要再输出卡片。\n\n【继续方式】\n- 我只会回复一个词：「继续」\n- 你收到「继续」就输出下一批新的 cards（仍然只输出 JSON），直到 has_more=false。\n\n如果我还没提供资料，请先回复：OK，请粘贴资料。（不要输出 JSON）`
+            : `You are a FlashCraft append-card generator. Create NEW cards to append into the same deck, in multiple JSON batches.\n\n[Params]\n- TOTAL = ${totalCards}\n- MAX_PER_REPLY = ${maxPerReply} (reduce if needed to avoid truncation)\n\n[Strict output rules]\n1) Each reply must be ONE valid JSON only. No explanations. No Markdown. No \`\`\`.\n2) JSON must be directly parseable.\n3) All batches use the same structure: { \"has_more\": true/false, \"cards\": [{ \"front\": \"...\", \"back\": \"...\" }] } — do NOT output title/desc.\n4) cards may only contain front/back; no title/desc/id; no duplicates; front/back cannot be empty.\n5) Keep LaTeX backslashes (e.g., \\frac{GM}{r^2} or $E = mc^2$).\n6) If too long, reduce cards count to keep JSON complete.\n7) When reaching TOTAL (or close), set has_more=false and stop.\n8) If has_more is already false and I still say \"继续\", reply: has_more is false, you can import in FlashCraft now. Do NOT output cards.\n\n[Continue]\n- I will reply with a single word: 继续\n- When you see 继续, output the next JSON batch until has_more=false.\n\nIf you don't have my source yet, reply: OK, paste the source. (No JSON yet.)`;
+
+        if (!isOpen) return null;
+
+        const copyPrompt = () => {
+            navigator.clipboard.writeText(AI_PROMPT)
+                .then(() => onToast?.({ variant: 'success', title: t.appendImport, message: t.promptCopied, icon: 'copy' }))
+                .catch(() => onToast?.({ variant: 'error', title: t.appendImport, message: t.manualCopy }));
+        };
+
+        const handleFileUpload = (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => { setJsonInput(String(event.target.result || '')); setErrorMsg(null); };
+            reader.readAsText(file);
+        };
+
+        const makeCardId = (i) => `card-${Date.now()}-${i}-${Math.random().toString(16).slice(2, 6)}`;
+
+        const parseCardsFromUnknown = (rawText) => {
+            const content = (rawText || '').trim();
+            if (!content) return [];
+
+            let cleanContent = content
+                .replace(/^```(json)?/g, '')
+                .replace(/```$/g, '')
+                .trim()
+                .replace(/[\u201C\u201D]/g, '"')
+                .replace(/[\u2018\u2019]/g, "'");
+            cleanContent = cleanContent.replace(/("(front|back)"\s*:\s*)(\\[\(\[\$])/g, '$1"$3');
+
+            const tryParse = (str) => {
+                const safe = str.replace(/\\(?![\\\/"bfnrtu])/g, '\\\\');
+                try { return JSON.parse(str); } catch (_) {}
+                try { return JSON.parse(safe); } catch (_) {}
+                try {
+                    const wrapped = `[${safe.replace(/}\s*{\s*/g, '},{')}]`;
+                    return JSON.parse(wrapped);
+                } catch (_) {}
+                return null;
+            };
+
+            const runJson = () => {
+                const data = tryParse(cleanContent);
+                if (!data) return [];
+                const cardsRaw = Array.isArray(data)
+                    ? data.flatMap(item => Array.isArray(item?.cards) ? item.cards : (item && item.front ? [item] : []))
+                    : (data.cards && Array.isArray(data.cards) ? data.cards : null);
+                if (!cardsRaw || !cardsRaw.length) return [];
+                return cardsRaw.slice(0, 1000).map((c, i) => ({
+                    id: c?.id || makeCardId(i),
+                    front: (c?.front ?? '').toString(),
+                    back: (c?.back ?? '').toString()
+                })).filter(c => c.front.trim() || c.back.trim());
+            };
+
+            const runTxt = () => {
+                const blocks = content.split(/\n\s*\n/);
+                const cards = [];
+                blocks.forEach((block, i) => {
+                    const lines = block.trim().split('\n');
+                    if (lines.length >= 2) {
+                        cards.push({
+                            id: makeCardId(i),
+                            front: (lines[0] || '').trim(),
+                            back: lines.slice(1).join('\n').trim()
+                        });
+                    }
+                });
+                return cards.filter(c => c.front.trim() || c.back.trim());
+            };
+
+            if (parserMode === 'json') return runJson();
+            if (parserMode === 'txt') return runTxt();
+            const jsonCards = runJson();
+            if (jsonCards.length) return jsonCards;
+            return runTxt();
+        };
+
+        const handleAppend = () => {
+            setErrorMsg(null);
+            const content = jsonInput.trim();
+            if (!content) return setErrorMsg(t.contentEmpty);
+            const cards = parseCardsFromUnknown(content);
+            if (!cards.length) return setErrorMsg(t.formatError);
+
+            onAppendCards?.(cards);
+            setJsonInput('');
+            try { confetti({ particleCount: 70, spread: 75, origin: { y: 0.62 }, colors: ['#facc15', '#171717', '#ffffff'] }); } catch (_) {}
+            onToast?.({ variant: 'success', title: t.appendImport, message: `${t.appendedCards} · ${cards.length} ${t.cards}`, icon: 'sparkles' });
+        };
+
+        return (
+            <div className="fixed inset-0 z-[205] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                        <h3 className="text-xl font-bold text-craft-black flex items-center gap-2">
+                            <Icon name="sparkles" className="text-craft-yellow" fill="currentColor" /> {t.appendImportTitle}
+                        </h3>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#f9f9fb]">
+                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="text-sm text-gray-600 leading-relaxed">{t.appendImportDesc}</div>
+                        </div>
+
+                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-craft-black flex items-center gap-2">
+                                    <Icon name="bot" size={16} /> {t.importStep1}
+                                </h4>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
+                                <div className="flex gap-2">
+                                    {['auto','json','txt'].map(mode => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setParserMode(mode)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}
+                                        >
+                                            {mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-gray-500">{t.parseModeTip}</div>
+                            <div className="bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl p-4">
+                                <div className="flex items-center gap-2 text-sm font-bold text-craft-black">
+                                    <Icon name="sparkles" size={16} className="text-craft-yellow" />
+                                    {t.appendGuideTitle}
+                                </div>
+                                <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-1">
+                                    <div>{t.appendGuide1}</div>
+                                    <div>{t.appendGuide2}</div>
+                                    <div>{t.appendGuide3}</div>
+                                    <div>{t.appendGuide4}</div>
+                                    <div>{t.appendGuide5}</div>
+                                    <div className="pt-1 text-[11px] font-bold text-gray-700">{t.aiGuide8}</div>
+                                    <div className="pt-1 text-[11px] font-bold text-craft-black">{t.continueOnly}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.aiTotal}</span>
+                                        <span className="text-xs font-mono text-gray-400">{totalCards}</span>
+                                    </div>
+                                    <input type="range" min="20" max="200" step="10" value={totalCards} onChange={(e) => setTotalCards(Number(e.target.value))} className="w-full h-2 mt-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-craft-black" />
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.aiBatch}</span>
+                                        <span className="text-xs font-mono text-gray-400">{maxPerReply}</span>
+                                    </div>
+                                    <input type="range" min="5" max="50" step="5" value={maxPerReply} onChange={(e) => setMaxPerReply(Number(e.target.value))} className="w-full h-2 mt-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-craft-black" />
+                                </div>
+                            </div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">{t.aiSuggested}</div>
+                            <div className="relative group">
+                                <textarea readOnly value={AI_PROMPT} className="w-full h-56 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
+                                <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
+                            </div>
+                            <div className="p-3 bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl text-[11px] font-bold text-craft-black">
+                                {t.continueOnlyShort} · {t.aiGuide8}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-craft-black flex items-center gap-2">
+                                    <Icon name="file-text" size={16} /> {t.importStep2}
+                                </h4>
+                                <div className="flex gap-2">
+                                    <button onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button>
+                                    <input ref={fileInputRef} type="file" accept=".json,.txt" className="hidden" onChange={handleFileUpload} />
+                                </div>
+                            </div>
+                            <textarea
+                                value={jsonInput}
+                                onChange={e => { setJsonInput(e.target.value); setErrorMsg(null); }}
+                                className="w-full h-44 p-4 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white resize-none shadow-inner transition-colors"
+                                placeholder={t.pasteJsonPlaceholder}
+                            ></textarea>
+                            {errorMsg && (
+                                <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 animate-pulse border border-red-100">
+                                    <Icon name="alert-circle" size={16} /> {errorMsg}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="p-6 border-t border-gray-100 bg-white">
+                        <button onClick={handleAppend} className="w-full py-4 bg-craft-black text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <Icon name="download" size={18} /> {t.appendImportBtn}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Edit View ---
+    const EditView = ({ deck, actions, lang }) => {
+        const [localDeck, setLocalDeck] = useState(deck);
+        const [front, setFront] = useState('');
+        const [back, setBack] = useState('');
+        const [isShareOpen, setIsShareOpen] = useState(false);
+        const [isAppendImportOpen, setIsAppendImportOpen] = useState(false);
+        const t = TRANSLATIONS[lang];
+
+        const handleSave = () => actions.saveDeck(localDeck);
+        const appendCards = (cards) => {
+            if (!Array.isArray(cards) || !cards.length) return;
+            setLocalDeck(prev => {
+                const prevCards = Array.isArray(prev.cards) ? prev.cards : [];
+                const nextCards = [...cards, ...prevCards];
+
+                const hadExisting = prevCards.length > 0;
+                const prevIndex = Number.isFinite(prev.progressIndex) ? prev.progressIndex : 0;
+                const nextIndex = hadExisting ? Math.min(prevIndex + cards.length, Math.max(0, nextCards.length - 1)) : 0;
+
+                return { ...prev, cards: nextCards, progressIndex: nextIndex };
+            });
+        };
+        const addCard = () => {
+            if (!front.trim() || !back.trim()) return;
+            const newCard = { id: `card-${Date.now()}`, front, back };
+            setLocalDeck({ ...localDeck, cards: [newCard, ...localDeck.cards] });
+            setFront(''); setBack('');
+        };
+        const removeCard = (id) => {
+            setLocalDeck({ ...localDeck, cards: localDeck.cards.filter(c => c.id !== id) });
+        };
+        const COLORS = ['#171717', '#facc15', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6'];
+
+        return (
+            <div className="min-h-screen bg-white flex flex-col animate-blur-in">
+                <ShareModal
+                    isOpen={isShareOpen}
+                    onClose={() => setIsShareOpen(false)}
+                    lang={lang}
+                    deck={localDeck}
+                    actions={actions}
+                    onDeckPatch={(patch) => setLocalDeck(prev => ({ ...prev, ...patch }))}
+                />
+                <AppendImportModal
+                    isOpen={isAppendImportOpen}
+                    onClose={() => setIsAppendImportOpen(false)}
+                    onAppendCards={appendCards}
+                    lang={lang}
+                    onToast={actions.toast}
+                />
+                <header className="fixed top-0 w-full h-20 px-6 border-b border-gray-100 flex items-center justify-between bg-white/90 backdrop-blur-md z-50">
+                    <button onClick={actions.goHome} className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors px-3 py-2 rounded-lg hover:bg-gray-50">
+                        <Icon name="chevron-left" size={20} />
+                        <span className="font-medium">{t.backNav}</span>
+                    </button>
+                    <div className="flex gap-4 items-center">
+                        <button onClick={() => setIsAppendImportOpen(true)} className="p-3 rounded-xl hover:bg-gray-50 transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.appendImport}>
+                            <Icon name="download" size={18} />
+                        </button>
+                        <button onClick={() => setIsShareOpen(true)} className="p-3 rounded-xl hover:bg-gray-50 transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.shareSettings}>
+                            <Icon name="share-2" size={18} />
+                        </button>
+                        {localDeck.share_code && (
+                            <button
+                                onClick={() => setIsShareOpen(true)}
+                                className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 hover:border-black transition-all text-gray-600 hover:text-black"
+                                title={t.shareSettings}
+                            >
+                                <Icon name="link-2" size={16} />
+                                <span className="text-xs font-mono font-bold">{localDeck.share_code}</span>
+                            </button>
+                        )}
+                        <span className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1 rounded-full">{localDeck.cards.length} {t.cards}</span>
+                        <button onClick={handleSave} className="px-6 py-2 bg-craft-black text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                            {t.done}
+                        </button>
+                    </div>
+                </header>
+
+                <div className="flex-1 pt-28 px-6 pb-20 max-w-4xl mx-auto w-full space-y-12">
+                    {/* Meta */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                        <div className="md:col-span-2 space-y-6">
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-black transition-colors">{t.deckTitle}</label>
+                                <input 
+                                    value={localDeck.title} 
+                                    onChange={e => setLocalDeck({...localDeck, title: e.target.value})}
+                                    className="w-full text-4xl font-bold border-b border-gray-100 focus:border-black outline-none py-2 bg-transparent placeholder-gray-200 transition-all"
+                                    placeholder={t.deckTitle}
+                                />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-black transition-colors">{t.deckDesc}</label>
+                                <textarea 
+                                    value={localDeck.desc} 
+                                    onChange={e => setLocalDeck({...localDeck, desc: e.target.value})}
+                                    rows={2}
+                                    className="w-full text-lg text-gray-600 border-b border-gray-100 focus:border-black outline-none py-2 bg-transparent resize-none placeholder-gray-200 transition-all"
+                                    placeholder={t.descPlaceholder}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.theme}</label>
+                            <div className="flex flex-wrap gap-3">
+                                {COLORS.map(c => (
+                                    <button 
+                                        key={c}
+                                        onClick={() => setLocalDeck({...localDeck, color: c})}
+                                        className={`w-10 h-10 rounded-full shadow-sm transition-all hover:scale-110 ${localDeck.color === c ? 'ring-2 ring-offset-2 ring-gray-300 scale-110' : ''}`}
+                                        style={{ backgroundColor: c }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Add Card */}
+                    <div className="bg-craft-gray rounded-[32px] p-8 border border-gray-200/50 shadow-inner">
+                        <div className="flex items-center gap-2 mb-6 text-gray-400">
+                            <Icon name="sparkles" size={16} className="text-craft-yellow" />
+                            <span className="text-xs font-bold uppercase tracking-widest">{t.addCard}</span>
+                        </div>
+                        <div className="grid gap-4">
+                            <textarea value={front} onChange={e => setFront(e.target.value)} placeholder={t.front} className="w-full p-4 rounded-xl bg-white border border-gray-200 focus:border-black focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium resize-y min-h-[80px]" />
+                            <textarea value={back} onChange={e => setBack(e.target.value)} placeholder={t.back} className="w-full p-4 rounded-xl bg-white border border-gray-200 focus:border-black focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium resize-y min-h-[80px]" />
+                            <button onClick={addCard} className="justify-self-end px-8 py-3 bg-white border border-gray-200 hover:border-black hover:bg-black hover:text-white rounded-xl font-bold transition-all shadow-sm active:scale-95">{t.add}</button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {localDeck.cards.map((card, i) => (
+                            <div key={card.id} className="group bg-white border border-gray-100 p-6 rounded-2xl flex gap-6 hover:shadow-lg hover:-translate-y-1 transition-all animate-scale-in" style={{ animationDelay: `${i * 0.05}s` }}>
+                                <div className="w-8 h-8 rounded-full bg-craft-gray text-gray-400 flex items-center justify-center text-xs font-mono font-bold shrink-0">{localDeck.cards.length - i}</div>
+                                <div className="flex-1 grid md:grid-cols-2 gap-6 overflow-hidden">
+                                    <div><span className="text-[10px] text-gray-300 font-bold uppercase block mb-1">{t.front}</span><MarkdownCard className="text-sm font-bold text-craft-black" content={card.front} /></div>
+                                    <div><span className="text-[10px] text-gray-300 font-bold uppercase block mb-1">{t.back}</span><MarkdownCard className="text-sm text-gray-500" content={card.back} /></div>
+                                </div>
+                                <button onClick={() => removeCard(card.id)} className="text-gray-300 hover:text-red-500 transition-colors self-center p-2"><Icon name="trash-2" size={18}/></button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Study View (No changes to logic, just props pass through) ---
+    const StudyView = ({ deck, actions, updateProgress, lang }) => {
+        const [index, setIndex] = useState(() => {
+            const savedIndex = deck.progressIndex || 0;
+            return Math.min(Math.max(savedIndex, 0), Math.max(deck.cards.length - 1, 0));
+        });
+        const [isFlipped, setIsFlipped] = useState(false);
+        const [studyCards, setStudyCards] = useState(deck.cards);
+        const [isMenuOpen, setIsMenuOpen] = useState(false); 
+        const touchStartX = useRef(0);
+        const touchEndX = useRef(0);
+        const t = TRANSLATIONS[lang];
+
+        if (!studyCards.length) {
+            return (
+                <div className="fixed inset-0 bg-[#121212] text-white flex flex-col items-center justify-center z-[100]">
+                    <div className="text-sm text-white/60 mb-4">No cards in this deck.</div>
+                    <button onClick={actions.goHome} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors border border-white/10">
+                        Back
+                    </button>
+                </div>
+            );
+        }
+
+        const safeIndex = Math.min(Math.max(index, 0), studyCards.length - 1);
+        const card = studyCards[safeIndex];
+        const progress = ((safeIndex + 1) / studyCards.length) * 100;
+
+        useEffect(() => updateProgress(deck.id, index), [index]);
+
+        const next = () => { if(safeIndex < studyCards.length - 1) { setIsFlipped(false); setTimeout(() => setIndex(i => Math.min(i + 1, studyCards.length - 1)), 350); } };
+        const prev = () => { if(safeIndex > 0) { setIsFlipped(false); setTimeout(() => setIndex(i => Math.max(i - 1, 0)), 350); } };
+
+        const copyCard = async () => {
+            try {
+                await navigator.clipboard.writeText(`${card.front}\n${card.back}`);
+                actions.toast?.({ variant: 'success', title: t.copy, message: `${t.front} + ${t.back}` });
+            } catch (e) {
+                actions.toast?.({ variant: 'error', title: t.copy, message: e?.message || 'Copy failed' });
+            }
+        };
+        const flip = () => setIsFlipped(!isFlipped);
+        const shuffle = () => {
+            const shuffled = [...deck.cards].sort(() => Math.random() - 0.5);
+            setStudyCards(shuffled);
+            setIndex(0); setIsFlipped(false); setIsMenuOpen(false);
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#facc15', '#ffffff'] });
+        };
+
+        const handleTouchStart = (e) => { touchStartX.current = e.changedTouches[0].screenX; };
+        const handleTouchEnd = (e) => { touchEndX.current = e.changedTouches[0].screenX; handleSwipe(); };
+        const handleSwipe = () => {
+            const diff = touchStartX.current - touchEndX.current;
+            if (Math.abs(diff) > 50) { if (diff > 0) next(); else prev(); }
+        };
+
+        useEffect(() => {
+            const closeMenu = () => setIsMenuOpen(false);
+            if(isMenuOpen) window.addEventListener('click', closeMenu);
+            return () => window.removeEventListener('click', closeMenu);
+        }, [isMenuOpen]);
+
+        useEffect(() => {
+            const handleKey = (e) => {
+                if(e.key === ' ' || e.key === 'Enter') flip();
+                if(e.key === 'ArrowRight') next();
+                if(e.key === 'ArrowLeft') prev();
+                if(e.key === 'Escape') actions.goHome();
+            };
+            window.addEventListener('keydown', handleKey);
+            return () => window.removeEventListener('keydown', handleKey);
+        }, [index, isFlipped]);
+
+        const frontFontSize = getSmartFontSize(card.front, true);
+        const backFontSize = getSmartFontSize(card.back, false);
+
+        return (
+            <div 
+                className="fixed inset-0 bg-[#121212] text-white flex flex-col z-[100] animate-blur-in select-none overflow-hidden"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
+                <button onClick={(e) => { e.stopPropagation(); prev(); }} disabled={index === 0} className={`absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/5 transition-all z-20 hidden md:flex items-center justify-center group ${index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 cursor-pointer'}`}><Icon name="chevron-left" size={32} className="text-gray-400 group-hover:text-white transition-colors" /></button>
+                <button onClick={(e) => { e.stopPropagation(); next(); }} disabled={index === studyCards.length - 1} className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/5 transition-all z-20 hidden md:flex items-center justify-center group ${index === studyCards.length - 1 ? 'opacity-0 pointer-events-none' : 'opacity-100 cursor-pointer'}`}><Icon name="chevron-right" size={32} className="text-gray-400 group-hover:text-white transition-colors" /></button>
+
+                <div className="flex justify-between items-center px-8 py-6 relative z-10 shrink-0">
+                    <button onClick={actions.goHome} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors backdrop-blur-md group"><Icon name="x" className="text-gray-400 group-hover:text-white" /></button>
+                    <div className="flex flex-col items-center">
+                        <h2 className="font-bold text-lg tracking-tight">{deck.title}</h2>
+                        <span className="text-xs font-mono text-white/40 mt-1">{index + 1} / {studyCards.length}</span>
+                    </div>
+                    <div className="relative flex items-center gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); copyCard(); }} className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-gray-300 hover:text-white transition-colors">
+                            <Icon name="copy" size={18} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className={`p-3 rounded-full transition-colors backdrop-blur-md ${isMenuOpen ? 'bg-white text-black' : 'bg-white/10 text-gray-400 hover:text-white hover:bg-white/20'}`}><Icon name="settings-2" /></button>
+                        {isMenuOpen && (
+                            <div className="absolute right-0 top-full mt-4 w-48 bg-[#1e1e1e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right animate-scale-in z-50">
+                                <button onClick={(e) => { e.stopPropagation(); shuffle(); }} className="w-full text-left px-5 py-3 hover:bg-white/5 flex items-center gap-3 text-sm font-medium text-gray-300 hover:text-white transition-colors"><Icon name="shuffle" size={16} /> {t.shuffle}</button>
+                                <button onClick={(e) => { e.stopPropagation(); setIndex(0); setIsFlipped(false); setIsMenuOpen(false); }} className="w-full text-left px-5 py-3 hover:bg-white/5 flex items-center gap-3 text-sm font-medium text-gray-300 hover:text-white transition-colors"><Icon name="rotate-ccw" size={16} /> {t.restart}</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="w-full h-1 bg-white/5 max-w-xl mx-auto rounded-full overflow-hidden mb-8 shrink-0">
+                    <div className="h-full bg-craft-yellow transition-all duration-500 ease-out shadow-[0_0_15px_rgba(250,204,21,0.5)]" style={{ width: `${progress}%` }}></div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 pb-20 custom-scrollbar w-full flex justify-center">
+                    <div className="w-full max-w-xl my-auto perspective-container min-h-[50vh]">
+                        <div className={`relative w-full cursor-pointer group ${isFlipped ? 'flipped' : ''}`} onClick={flip}>
+                            <div className="card-inner">
+                                <div className="card-front bg-[#f5f5f7] flex flex-col items-center justify-center p-8 md:p-12 border-8 border-white overflow-hidden shadow-2xl min-h-[60vh]">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-8">{t.front}</span>
+                                    <div className="flex-1 flex items-center justify-center w-full"><MarkdownCard className={`${frontFontSize} text-craft-black text-center leading-tight select-none w-full`} content={card.front} /></div>
+                                    <span className="text-xs text-gray-400 font-medium mt-8 opacity-50 animate-pulse tracking-widest flex items-center gap-2">{t.tapToFlip} <Icon name="refresh-cw" size={12} /></span>
+                                </div>
+                                <div className="card-back bg-craft-black flex flex-col items-center justify-center p-8 md:p-12 border-8 border-craft-yellow overflow-hidden shadow-2xl min-h-[60vh]">
+                                    <span className="text-xs font-bold text-craft-yellow uppercase tracking-[0.2em] mb-8">{t.back}</span>
+                                    <div className="flex-1 flex items-center justify-center w-full"><MarkdownCard className={`${backFontSize} text-white text-center leading-relaxed select-none w-full`} content={card.back} /></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Import Modal (Same as before, passed t) ---
+    const ImportModal = ({ isOpen, onClose, onImport, onImportShared, lang, onToast }) => {
+        const [jsonInput, setJsonInput] = useState('');
+        const [errorMsg, setErrorMsg] = useState(null);
+        const [totalCards, setTotalCards] = useState(80);
+        const [maxPerReply, setMaxPerReply] = useState(15);
+        const [shareCode, setShareCode] = useState('');
+        const [pendingCards, setPendingCards] = useState([]);
+        const [lastParsed, setLastParsed] = useState(0);
+        const [titleInput, setTitleInput] = useState('');
+        const [descInput, setDescInput] = useState('');
+        const [isClearing, setIsClearing] = useState(false);
+        const [parserMode, setParserMode] = useState('auto'); // auto | json | txt
+        const fileInputRef = useRef(null);
+        const t = TRANSLATIONS[lang];
+
+        useEffect(() => {
+            setMaxPerReply(prev => Math.max(5, Math.min(prev, totalCards)));
+        }, [totalCards]);
+
+        const AI_PROMPT = lang === 'zh'
+            ? `你是 FlashCraft 词书生成器。请基于我提供的资料生成记忆卡片。\n\n【参数】\n- 目标总张数 TOTAL = ${totalCards}\n- 每次最多输出 MAX_PER_REPLY = ${maxPerReply}（可更少以防截断，但必须保证 JSON 完整）\n\n【输出规则（必须遵守）】\n1) 每次回复只能输出一个完整 JSON，不要解释、不要 Markdown、不要 \`\`\` 代码块。\n2) JSON 必须可直接 JSON.parse。\n3) 所有批次统一结构：{ \"has_more\": true/false, \"cards\": [{ \"front\": \"...\", \"back\": \"...\" }] }，不要输出 title/desc。\n4) cards 只允许 front/back；不要输出其它字段；front/back 不能为空；不要重复卡片。\n5) 支持公式请用 LaTeX，保持反斜杠：如 \\frac{GM}{r^2} 或 $E = mc^2$。\n6) 如果预计会被截断，减少本批 cards 数量，确保 JSON 完整闭合。\n7) 达到 TOTAL 后，把 has_more 设为 false 并停止。\n8) 如果 has_more 已是 false 而我还说“继续”，请回复：has_more 已是 false，请前往 FlashCraft 导入，且不要再输出卡片。\n\n【继续方式】\n- 我只会回复一个词：“继续”\n- 你收到“继续”就输出下一批新的 cards（仍然只输出 JSON），直到 has_more=false。\n\n如果我还没提供资料，请先回复：OK，请粘贴资料。（不要输出 JSON）`
+            : `You are a FlashCraft deck generator. Create study flashcards from my source text.\n\n[Params]\n- TOTAL = ${totalCards}\n- MAX_PER_REPLY = ${maxPerReply} (reduce if needed to avoid truncation)\n\n[Strict rules]\n1) Each reply must be ONE valid JSON only. No explanations. No Markdown. No \`\`\`.\n2) JSON must be directly parseable.\n3) All batches use the same structure: { \"has_more\": true/false, \"cards\": [{ \"front\": \"...\", \"back\": \"...\" }] } — do NOT output title/desc.\n4) cards may only contain front/back; no other fields; no duplicates; front/back cannot be empty.\n5) Keep LaTeX backslashes (e.g., \\frac{GM}{r^2} or $E = mc^2$) for formulas.\n6) If length risk, reduce cards to keep JSON complete.\n7) When TOTAL reached, set has_more=false and stop.\n8) If has_more is already false and I still say \"继续\", reply: has_more is false, you can import in FlashCraft now. Do NOT output cards.\n\n[Continue]\n- I will reply with a single word: 继续\n- When you see 继续, output the next JSON batch until has_more=false.\n\nIf you don't have my source yet, reply: OK, paste the source. (No JSON yet.)`;
+
+        if (!isOpen) return null;
+
+        const copyPrompt = () => {
+            navigator.clipboard.writeText(AI_PROMPT)
+                .then(() => onToast?.({ variant: 'success', title: t.importWizard, message: t.promptCopied, icon: 'copy' }))
+                .catch(() => onToast?.({ variant: 'error', title: t.importWizard, message: t.manualCopy }));
+        };
+
+        const handleImportShared = async () => {
+            const cleaned = shareCode.trim();
+            if (!cleaned) return;
+            try {
+                await onImportShared(cleaned);
+                onClose();
+            } catch (e) {
+                setErrorMsg(e?.message || String(e));
+            }
+        };
+
+        const handleFileUpload = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => { setJsonInput(event.target.result); setErrorMsg(null); };
+            reader.readAsText(file);
+        };
+
+        const parseCardsFromInput = (raw) => {
+            const content = raw.trim();
+            if (!content) return [];
+
+            let clean = content
+                .replace(/^```(json)?/g, '')
+                .replace(/```$/g, '')
+                .trim()
+                .replace(/[\u201C\u201D]/g, '"')
+                .replace(/[\u2018\u2019]/g, "'");
+            // 修正未加引号的 LaTeX 起始符（例如 "back": \( ... ） 
+            clean = clean.replace(/("(front|back)"\s*:\s*)(\\[\(\[\$])/g, '$1"$3');
+
+            const tryParse = (str) => {
+                const safe = str.replace(/\\(?![\\\/"bfnrtu])/g, '\\\\');
+                try { return JSON.parse(str); } catch (_) {}
+                try { return JSON.parse(safe); } catch (_) {}
+                try {
+                    const wrapped = `[${safe.replace(/}\s*{\s*/g, '},{')}]`;
+                    return JSON.parse(wrapped);
+                } catch (_) {}
+                return null;
+            };
+
+            const collect = (payload) => {
+                if (!payload) return [];
+                if (Array.isArray(payload)) {
+                    return payload.flatMap(item => Array.isArray(item?.cards) ? item.cards : (item && (item.front || item.back) ? [item] : []));
+                }
+                if (payload.cards && Array.isArray(payload.cards)) return payload.cards;
+                return [];
+            };
+
+            const runJson = () => {
+                const data = tryParse(clean);
+                const cards = collect(data);
+                return cards;
+            };
+
+            const runTxt = () => {
+                const blocks = clean.split(/\n\s*\n/);
+                const txtCards = [];
+                blocks.forEach(block => {
+                    const lines = block.trim().split('\n');
+                    if (lines.length >= 2) txtCards.push({ front: lines[0].trim(), back: lines.slice(1).join('\n').trim() });
+                });
+                return txtCards;
+            };
+
+            if (parserMode === 'json') return runJson() || [];
+            if (parserMode === 'txt') return runTxt() || [];
+
+            // auto: json then txt fallback
+            const jsonCards = runJson();
+            if (jsonCards && jsonCards.length) return jsonCards;
+            return runTxt();
+        };
+
+        const handleParseAndAccumulate = () => {
+            setErrorMsg(null);
+            const cards = parseCardsFromInput(jsonInput);
+            if (!cards.length) { setErrorMsg(t.formatError); return; }
+            setPendingCards(prev => [...prev, ...cards]);
+            setLastParsed(cards.length);
+            setIsClearing(true);
+            setTimeout(() => {
+                setJsonInput('');
+                setIsClearing(false);
+            }, 250);
+            onToast?.({ variant: 'success', title: t.appendedCards, message: `+${cards.length} ${t.cards}`, icon: 'sparkles' });
+        };
+
+        const handleFinalizeImport = () => {
+            if (!pendingCards.length) return setErrorMsg(t.importNeedCards);
+            const title = titleInput.trim() || t.importedTextDeckTitle;
+            const desc = descInput.trim() || `${t.importedOn} ${new Date().toLocaleDateString()}`;
+            onImport({ title, desc, cards: pendingCards });
+            setPendingCards([]);
+            setLastParsed(0);
+            setJsonInput('');
+            setTitleInput('');
+            setDescInput('');
+            onClose();
+        };
+
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+                        <h3 className="text-xl font-bold text-craft-black flex items-center gap-2"><Icon name="sparkles" className="text-craft-yellow" fill="currentColor" /> {t.importWizard}</h3>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-[#f9f9fb]">
+                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-craft-black flex items-center gap-2">
+                                    <Icon name="link-2" size={16}/> {t.importShared}
+                                </h4>
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    value={shareCode}
+                                    onChange={(e) => setShareCode(e.target.value)}
+                                    placeholder={t.enterShareCode}
+                                    className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white transition-colors"
+                                />
+                                <button
+                                    onClick={handleImportShared}
+                                    disabled={!shareCode.trim()}
+                                    className={`px-4 py-3 rounded-xl font-bold text-xs transition-all active:scale-95 ${shareCode.trim() ? 'bg-craft-black text-white hover:bg-gray-800 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                >
+                                    {t.import}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="bot" size={16}/> {t.importStep1}</h4></div>
+                            <div className="bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl p-4">
+                                <div className="flex items-center gap-2 text-sm font-bold text-craft-black">
+                                    <Icon name="sparkles" size={16} className="text-craft-yellow" />
+                                    {t.aiGuideTitle}
+                                </div>
+                                <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-1">
+                                    <div>{t.aiGuide1}</div>
+                                    <div>{t.aiGuide2}</div>
+                                    <div>{t.aiGuide3}</div>
+                                    <div>{t.aiGuide4}</div>
+                                    <div>{t.aiGuide5}</div>
+                                    <div>{t.aiGuide6}</div>
+                                    <div>{t.aiGuide7}</div>
+                                    <div className="pt-1 text-[11px] font-bold text-gray-700">{t.aiGuide8}</div>
+                                    <div className="pt-1 text-[11px] font-bold text-craft-black">{t.continueOnly}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.aiTotal}</span>
+                                        <span className="text-xs font-mono text-gray-400">{totalCards}</span>
+                                    </div>
+                                    <input type="range" min="20" max="200" step="10" value={totalCards} onChange={(e) => setTotalCards(Number(e.target.value))} className="w-full h-2 mt-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-craft-black" />
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.aiBatch}</span>
+                                        <span className="text-xs font-mono text-gray-400">{maxPerReply}</span>
+                                    </div>
+                                    <input type="range" min="5" max="50" step="5" value={maxPerReply} onChange={(e) => setMaxPerReply(Number(e.target.value))} className="w-full h-2 mt-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-craft-black" />
+                                </div>
+                            </div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">{t.aiSuggested}</div>
+                            <div className="relative group">
+                                <textarea readOnly value={AI_PROMPT} className="w-full h-56 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
+                                <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
+                            </div>
+                            <div className="p-3 bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl text-[11px] font-bold text-craft-black">
+                                {t.continueOnlyShort} · {t.aiGuide8}
+                            </div>
+                        </div>
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckTitleLabel}</label>
+                                        <input
+                                            value={titleInput}
+                                            onChange={(e) => setTitleInput(e.target.value)}
+                                            className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm"
+                                            placeholder={t.deckTitle}
+                                        />
+                                    </div>
+                                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckDescLabel}</label>
+                                        <input
+                                            value={descInput}
+                                            onChange={(e) => setDescInput(e.target.value)}
+                                            className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm"
+                                            placeholder={t.deckDesc}
+                                        />
+                                    </div>
+                                </div>
+                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16}/> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt" className="hidden" onChange={handleFileUpload} /></div></div>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
+                                <div className="flex gap-2">
+                                    {['auto','json','txt'].map(mode => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setParserMode(mode)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}
+                                        >
+                                            {mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-gray-500">{t.parseModeTip}</div>
+                            <div className={`relative`}>
+                                <textarea value={jsonInput} onChange={e => { setJsonInput(e.target.value); setErrorMsg(null); }} className={`w-full h-40 p-4 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white resize-none shadow-inner transition-colors ${isClearing ? 'animate-fade-out' : ''}`} placeholder={t.pasteJsonPlaceholder}></textarea>
+                            </div>
+                            {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 animate-pulse border border-red-100"><Icon name="alert-circle" size={16} /> {errorMsg}</div>}
+                            {pendingCards.length > 0 && (
+                                <div className="p-3 bg-green-50 text-green-700 text-xs font-bold rounded-xl flex items-center gap-2 border border-green-100">
+                                    <Icon name="check-circle" size={16} /> {t.accumulatedCards}: {pendingCards.length} {t.cards} {lastParsed ? `( +${lastParsed} )` : ''}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="p-6 border-t border-gray-100 bg-white space-y-3">
+                        <button onClick={handleParseAndAccumulate} className="w-full py-3 bg-white border border-gray-200 hover:border-black hover:bg-black hover:text-white rounded-xl font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2">
+                            <Icon name="plus" size={16} /> {t.parseAndAccumulate}
+                        </button>
+                        <button onClick={handleFinalizeImport} className="w-full py-4 bg-craft-black text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <Icon name="download" size={18} /> {t.finalizeImport}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Guide Overlay (Same, passed t) ---
+    const GuideOverlay = ({ isOpen, onDismiss, lang }) => {
+        if (!isOpen) return null;
+        const t = TRANSLATIONS[lang];
+        const features = [
+            { icon: 'plus', title: t.guideF1Title, desc: t.guideF1Desc },
+            { icon: 'sparkles', title: t.guideF2Title, desc: t.guideF2Desc },
+            { icon: 'layers', title: t.guideF3Title, desc: t.guideF3Desc },
+            { icon: 'share-2', title: t.guideF4Title, desc: t.guideF4Desc },
+            { icon: 'crown', title: t.guideF5Title, desc: t.guideF5Desc }
+        ];
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-300">
+                <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative animate-blur-in">
+                    <button onClick={onDismiss} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-black transition-colors z-10"><Icon name="x" size={20}/></button>
+                    <div className="p-8">
+                        <div className="text-center">
+                            <div className="w-20 h-20 bg-craft-black rounded-2xl flex items-center justify-center mx-auto shadow-xl transform -rotate-3 animate-float">
+                                <span className="font-serif text-4xl font-bold text-white tracking-tighter">F</span>
+                            </div>
+                            <div className="mt-6">
+                                <h2 className="text-2xl font-bold text-craft-black mb-2">{t.guideWelcome}</h2>
+                                <p className="text-gray-500 text-sm leading-relaxed">{t.guideDesc}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-7">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">{t.guideFeaturesTitle}</div>
+                            <div className="space-y-3">
+                                {features.map((f) => (
+                                    <div key={f.title} className="flex items-start gap-3 bg-[#f9f9fb] border border-gray-100 rounded-2xl p-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-craft-black shadow-sm">
+                                            <Icon name={f.icon} size={18} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-sm font-bold text-craft-black">{f.title}</div>
+                                            <div className="text-xs text-gray-500 leading-relaxed mt-1">{f.desc}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button onClick={onDismiss} className="w-full py-3 bg-craft-black text-white rounded-2xl font-bold mt-8 hover:bg-gray-800 transition-all shadow-lg active:scale-95">
+                            {t.guideStart}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Full Screen Loader ---
+    const FullScreenLoader = ({ label }) => (
+        <div className="min-h-screen flex items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-craft-black text-white flex items-center justify-center shadow-xl animate-float">
+                    <span className="font-serif text-2xl font-bold tracking-tighter">F</span>
+                </div>
+                <div className="text-sm font-medium text-gray-500">{label}</div>
+            </div>
+        </div>
+    );
+
+    // --- Pro Celebration Overlay ---
+    const ProCelebrationOverlay = ({ isOpen, onClose, lang }) => {
+        if (!isOpen) return null;
+        const t = TRANSLATIONS[lang];
+
+        useEffect(() => {
+            const timers = [];
+            try {
+                confetti({ particleCount: 140, spread: 90, origin: { y: 0.65 }, colors: ['#facc15', '#171717', '#ffffff'] });
+                timers.push(setTimeout(() => confetti({ particleCount: 90, spread: 120, origin: { y: 0.55 }, colors: ['#facc15', '#171717', '#ffffff'] }), 220));
+                timers.push(setTimeout(() => confetti({ particleCount: 70, spread: 100, origin: { y: 0.6 }, colors: ['#facc15', '#171717', '#ffffff'] }), 420));
+            } catch (_) {}
+            const auto = setTimeout(() => onClose?.(), 2400);
+            return () => {
+                clearTimeout(auto);
+                timers.forEach(clearTimeout);
+            };
+        }, [isOpen]);
+
+        return (
+            <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
+                <div className="relative w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border border-white/30 animate-glow">
+                    <div className="absolute inset-0 bg-gradient-to-br from-craft-yellow via-white to-white"></div>
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-craft-yellow/30 blur-3xl rounded-full"></div>
+                    <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-black/10 blur-3xl rounded-full"></div>
+
+                    <div className="relative p-8 text-center">
+                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-black/40 hover:text-black transition-colors">
+                            <Icon name="x" size={20} />
+                        </button>
+
+                        <div className="w-20 h-20 bg-craft-black rounded-2xl flex items-center justify-center mx-auto shadow-2xl transform -rotate-2">
+                            <Icon name="crown" size={34} className="text-craft-yellow" />
+                        </div>
+                        <h2 className="text-2xl font-black text-craft-black mt-6 tracking-tight">{t.proUnlockedTitle}</h2>
+                        <p className="text-sm text-gray-600 mt-2 leading-relaxed">{t.proUnlockedDesc}</p>
+
+                        <button onClick={onClose} className="w-full py-3 bg-craft-black text-white rounded-2xl font-bold mt-8 hover:bg-gray-800 transition-all shadow-lg active:scale-95">
+                            {t.proUnlockedBtn}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Pro Welcome Overlay (for existing Pro users) ---
+    const ProWelcomeOverlay = ({ isOpen, onClose, lang }) => {
+        if (!isOpen) return null;
+        const t = TRANSLATIONS[lang];
+
+        useEffect(() => {
+            const timers = [];
+            try {
+                confetti({ particleCount: 90, spread: 85, origin: { y: 0.65 }, colors: ['#facc15', '#171717', '#ffffff'] });
+                timers.push(setTimeout(() => confetti({ particleCount: 45, spread: 110, origin: { y: 0.55 }, colors: ['#facc15', '#171717', '#ffffff'] }), 180));
+            } catch (_) {}
+            const auto = setTimeout(() => onClose?.(), 1800);
+            return () => {
+                clearTimeout(auto);
+                timers.forEach(clearTimeout);
+            };
+        }, [isOpen]);
+
+        return (
+            <div className="fixed inset-0 z-[255] flex items-center justify-center bg-black/35 backdrop-blur-md animate-blur-in p-6">
+                <div className="relative w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border border-white/30 animate-glow">
+                    <div className="absolute inset-0 bg-gradient-to-br from-craft-yellow via-white to-white"></div>
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-craft-yellow/30 blur-3xl rounded-full"></div>
+                    <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-black/10 blur-3xl rounded-full"></div>
+
+                    <div className="relative p-8 text-center">
+                        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-black/40 hover:text-black transition-colors">
+                            <Icon name="x" size={20} />
+                        </button>
+
+                        <div className="w-20 h-20 bg-craft-black rounded-2xl flex items-center justify-center mx-auto shadow-2xl transform -rotate-2">
+                            <Icon name="crown" size={34} className="text-craft-yellow" />
+                        </div>
+                        <h2 className="text-2xl font-black text-craft-black mt-6 tracking-tight">{t.proWelcomeTitle}</h2>
+                        <p className="text-sm text-gray-600 mt-2 leading-relaxed">{t.proWelcomeDesc}</p>
+
+                        <button onClick={onClose} className="w-full py-3 bg-craft-black text-white rounded-2xl font-bold mt-8 hover:bg-gray-800 transition-all shadow-lg active:scale-95">
+                            {t.proWelcomeBtn}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Login View (Supabase Magic Link) ---
+    const LoginView = ({ lang, setLang }) => {
+        const t = TRANSLATIONS[lang];
+        const [email, setEmail] = useState('');
+        const [isSending, setIsSending] = useState(false);
+        const [status, setStatus] = useState(null);
+        const [error, setError] = useState(null);
+
+        const sendMagicLink = async () => {
+            const cleaned = email.trim();
+            if (!cleaned) return;
+            setIsSending(true);
+            setError(null);
+            setStatus(null);
+
+            const { error } = await supabase.auth.signInWithOtp({
+                email: cleaned,
+                options: { emailRedirectTo: window.location.origin }
+            });
+
+            if (error) setError(error.message);
+            else setStatus('sent');
+            setIsSending(false);
+        };
+
+        return (
+            <div className="min-h-screen flex items-center justify-center px-6 py-10">
+                <div className="w-full max-w-md">
+                    <div className="flex justify-center mb-6">
+                        <div className="w-16 h-16 bg-craft-black rounded-2xl flex items-center justify-center shadow-xl transform -rotate-3">
+                            <span className="font-serif text-4xl font-bold text-white tracking-tighter">F</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white w-full rounded-[32px] shadow-2xl overflow-hidden border border-white/50 animate-blur-in">
+                        <div className="p-8 space-y-6">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold text-craft-black">{t.loginTitle}</h2>
+                                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{t.loginDesc}</p>
+                            </div>
+
+                            <div className="bg-craft-yellow/15 border border-craft-yellow/25 rounded-2xl p-4">
+                                <div className="flex items-center gap-2 text-sm font-bold text-craft-black">
+                                    <Icon name="mail" size={16} className="text-craft-yellow" />
+                                    {t.magicLinkTipTitle}
+                                </div>
+                                <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-1">
+                                    <div>{t.magicLinkTip1}</div>
+                                    <div>{t.magicLinkTip2}</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <input
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    type="email"
+                                    placeholder={t.emailPlaceholder}
+                                    className="w-full p-4 rounded-2xl bg-white border border-gray-200 focus:border-black focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium"
+                                />
+                                <button
+                                    onClick={sendMagicLink}
+                                    disabled={isSending || !email.trim()}
+                                    className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${isSending || !email.trim() ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-craft-black text-white hover:shadow-xl hover:-translate-y-0.5'}`}
+                                >
+                                    {isSending ? t.loading : t.sendMagicLink}
+                                </button>
+                                {status === 'sent' && (
+                                    <div className="p-3 bg-green-50 text-green-700 text-xs font-bold rounded-xl flex items-center gap-2 border border-green-100">
+                                        <Icon name="mail" size={16} /> {t.magicLinkSent}
+                                    </div>
+                                )}
+                                {error && (
+                                    <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 border border-red-100">
+                                        <Icon name="alert-circle" size={16} /> {error}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.language}</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setLang('zh')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${lang === 'zh' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>中文</button>
+                                    <button onClick={() => setLang('en')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${lang === 'en' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>EN</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-center mt-6 text-[10px] font-mono text-gray-300">
+                        {t.poweredBy}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Main App ---
+    function App() {
+        const [session, setSession] = useState(null);
+        const [user, setUser] = useState(null);
+        const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+        const [decks, setDecks] = useState([]);
+        const [view, setView] = useState('home');
+        const [activeDeck, setActiveDeck] = useState(null);
+        const [showImport, setShowImport] = useState(false);
+        const [showGuide, setShowGuide] = useState(true);
+        const [sortMode, setSortMode] = useState('default');
+        const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+        const [reduceMotion, setReduceMotion] = useState(false);
+        const [lang, setLang] = useState('zh'); // Default Language
+        const [showPricing, setShowPricing] = useState(false);
+        const [isAdminOpen, setIsAdminOpen] = useState(false);
+        const [isSyncing, setIsSyncing] = useState(false);
+        const [highlightDeckId, setHighlightDeckId] = useState(null);
+        const [showProCelebration, setShowProCelebration] = useState(false);
+        const [showProWelcome, setShowProWelcome] = useState(false);
+        const [toast, setToast] = useState(null);
+        const proWelcomeShownForRef = useRef(null);
+        const decksRef = useRef(decks);
+        const progressSaveTimeoutRef = useRef(null);
+        const toastHideTimeoutRef = useRef(null);
+        const toastRemoveTimeoutRef = useRef(null);
+
+        const dismissToast = () => {
+            setToast(prev => prev ? { ...prev, leaving: true } : prev);
+            clearTimeout(toastHideTimeoutRef.current);
+            clearTimeout(toastRemoveTimeoutRef.current);
+            toastRemoveTimeoutRef.current = setTimeout(() => setToast(null), 450);
+        };
+
+        const pushToast = (next) => {
+            const payload = typeof next === 'string' ? { message: next } : (next || {});
+            const id = Date.now();
+            setToast({ id, leaving: false, variant: 'info', ...payload });
+            clearTimeout(toastHideTimeoutRef.current);
+            clearTimeout(toastRemoveTimeoutRef.current);
+            toastHideTimeoutRef.current = setTimeout(() => {
+                setToast(prev => prev && prev.id === id ? { ...prev, leaving: true } : prev);
+                toastRemoveTimeoutRef.current = setTimeout(() => setToast(null), 450);
+            }, Number.isFinite(payload.duration) ? payload.duration : 2600);
+        };
+
+        useEffect(() => {
+            let mounted = true;
+            const init = async () => {
+                setIsAuthLoading(true);
+                const { data } = await supabase.auth.getSession();
+                if (!mounted) return;
+                setSession(data.session);
+                setIsAuthLoading(false);
+            };
+
+            init();
+
+            const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+                setSession(nextSession);
+            });
+
+            return () => {
+                mounted = false;
+                data.subscription.unsubscribe();
+            };
+        }, []);
+
+        useEffect(() => {
+            let cancelled = false;
+            const loadProfile = async () => {
+                if (!session?.user) { setUser(null); return; }
+                const baseUser = { id: session.user.id, email: session.user.email };
+
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id,email,is_pro,role')
+                    .eq('id', baseUser.id)
+                    .maybeSingle();
+
+                const merged = {
+                    ...baseUser,
+                    ...(profile || {}),
+                    role: profile?.role || 'user',
+                    is_pro: !!profile?.is_pro
+                };
+
+                if (!cancelled) setUser(merged);
+            };
+
+            loadProfile();
+            return () => { cancelled = true; };
+        }, [session?.user?.id]);
+
+        useEffect(() => { decksRef.current = decks; }, [decks]);
+
+        useEffect(() => {
+            if (!user?.id) return;
+            if (!user?.is_pro) return;
+            if (showGuide) return;
+            if (showProCelebration) return;
+            if (proWelcomeShownForRef.current === user.id) return;
+            proWelcomeShownForRef.current = user.id;
+            setShowProWelcome(true);
+        }, [user?.id, user?.is_pro, showGuide, showProCelebration]);
+
+        useEffect(() => {
+            if (view !== 'home' || !highlightDeckId) return;
+            const timer = setTimeout(() => setHighlightDeckId(null), 1800);
+            return () => clearTimeout(timer);
+        }, [view, highlightDeckId]);
+
+        useEffect(() => {
+            let cancelled = false;
+            const loadDecks = async () => {
+                if (!user?.id) return;
+                setIsSyncing(true);
+                const { data, error } = await supabase
+                    .from('decks')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+                if (cancelled) return;
+                if (error) {
+                    console.error('Load decks error:', error);
+                    setDecks([]);
+                } else {
+                    setDecks((data || []).map(rowToDeck));
+                }
+                setIsSyncing(false);
+            };
+            loadDecks();
+            return () => { cancelled = true; };
+        }, [user?.id]);
+
+        const signOut = async () => {
+            await supabase.auth.signOut();
+            setIsSettingsOpen(false);
+            setShowProWelcome(false);
+            proWelcomeShownForRef.current = null;
+            setView('home');
+            setActiveDeck(null);
+            setDecks([]);
+        };
+
+        const canCreateAnotherDeck = async () => {
+            if (user?.is_pro) return true;
+            const { count, error } = await supabase
+                .from('decks')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+            if (error) {
+                console.error('Deck limit check error:', error);
+                return true;
+            }
+            if ((count || 0) >= 5) {
+                setShowPricing(true);
+                return false;
+            }
+            return true;
+        };
+
+        const redeemProCode = async (raw) => {
+            const code = (raw || '').trim();
+            if (!code) return { ok: false, kind: 'invalid' };
+            const wasPro = !!user?.is_pro;
+
+            // Prefer RPC if available (atomic server-side redemption)
+            const rpcCandidates = [
+                { fn: 'redeem_pro_code', args: { code } },
+                { fn: 'redeem_pro_code', args: { code_input: code } },
+                { fn: 'redeem_pro_code', args: { redemption_code: code } }
+            ];
+
+            for (const attempt of rpcCandidates) {
+                const { data, error } = await supabase.rpc(attempt.fn, attempt.args);
+                if (!error) {
+                    const okValue =
+                        typeof data === 'boolean'
+                            ? data
+                            : (data && typeof data === 'object' && 'ok' in data ? !!data.ok : true);
+
+                    if (okValue) {
+                        setUser(prev => prev ? { ...prev, is_pro: true } : prev);
+                        if (!wasPro) {
+                            proWelcomeShownForRef.current = user?.id || null;
+                            setShowProCelebration(true);
+                        }
+                        return { ok: true, kind: 'ok' };
+                    }
+                    return { ok: false, kind: 'invalid' };
+                }
+                const msg = (error?.message || '').toLowerCase();
+                const missing =
+                    msg.includes('function') && (msg.includes('does not exist') || msg.includes('not found'));
+                if (!missing) {
+                    return { ok: false, kind: 'error', message: error.message };
+                }
+            }
+
+            // Client-side fallback (requires appropriate RLS/policies)
+            const { data: codeRow, error: codeErr } = await supabase
+                .from('redemption_codes')
+                .select('code,is_used')
+                .ilike('code', code)
+                .maybeSingle();
+            if (codeErr) return { ok: false, kind: 'error', message: codeErr.message };
+            if (!codeRow || codeRow.is_used) return { ok: false, kind: 'invalid' };
+
+            const { error: markErr } = await supabase
+                .from('redemption_codes')
+                .update({ is_used: true })
+                .eq('code', codeRow.code)
+                .eq('is_used', false);
+            if (markErr) return { ok: false, kind: 'error', message: markErr.message };
+
+            const { error: profileErr } = await supabase
+                .from('profiles')
+                .update({ is_pro: true })
+                .eq('id', user.id);
+            if (profileErr) {
+                // best-effort rollback so codes aren't burned if profile update is blocked
+                try {
+                    await supabase
+                        .from('redemption_codes')
+                        .update({ is_used: false })
+                        .eq('code', codeRow.code)
+                        .eq('is_used', true);
+                } catch (_) {}
+                return { ok: false, kind: 'error', message: profileErr.message };
+            }
+
+            setUser(prev => prev ? { ...prev, is_pro: true } : prev);
+            if (!wasPro) {
+                proWelcomeShownForRef.current = user?.id || null;
+                setShowProCelebration(true);
+            }
+            return { ok: true, kind: 'ok' };
+        };
+
+        const t = TRANSLATIONS[lang];
+
+        const actions = {
+            toast: pushToast,
+            createDeck: async () => {
+                const ok = await canCreateAnotherDeck();
+                if (!ok) return;
+                const content = deckToContent({ title: t.untitled, desc: '', color: '#171717', cards: [], progressIndex: 0 });
+                const { data, error } = await supabase
+                    .from('decks')
+                    .insert({ user_id: user.id, content })
+                    .select('*')
+                    .single();
+                if (error) return pushToast({ variant: 'error', title: t.newDeck, message: error.message });
+                const newDeck = rowToDeck(data);
+                setDecks(prev => [newDeck, ...prev]);
+                setActiveDeck(newDeck);
+                setView('edit');
+                setHighlightDeckId(newDeck.id);
+                try { confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#facc15', '#171717', '#ffffff'] }); } catch (_) {}
+                pushToast({ variant: 'success', title: t.newDeck, message: `${newDeck.title}` });
+            },
+            deleteDeck: async (id) => {
+                if (!confirm(TRANSLATIONS[lang].deleteConfirm)) return;
+                const deck = decksRef.current.find(d => d.id === id);
+                const { error } = await supabase.from('decks').delete().eq('id', id);
+                if (error) return pushToast({ variant: 'error', title: t.delete, message: error.message });
+                setDecks(prev => prev.filter(d => d.id !== id));
+                pushToast({ variant: 'success', title: t.deleted, message: deck?.title || t.deckRemoved, icon: 'trash-2' });
+            },
+            editDeck: (deck) => { setActiveDeck(deck); setView('edit'); },
+            saveDeck: async (updated) => {
+                const content = deckToContent(updated);
+                const { data, error } = await supabase
+                    .from('decks')
+                    .update({ content })
+                    .eq('id', updated.id)
+                    .select('*')
+                    .single();
+                if (error) return pushToast({ variant: 'error', title: t.done, message: error.message });
+                const saved = rowToDeck(data);
+                setDecks(prev => prev.map(d => d.id === saved.id ? saved : d));
+                setView('home');
+                pushToast({ variant: 'success', title: t.done, message: saved.title, icon: 'check' });
+            },
+            generateShareCode: async (deckId) => {
+                for (let attempt = 0; attempt < 6; attempt++) {
+                    const code = generateRandomShareCode();
+                    const { data, error } = await supabase
+                        .from('decks')
+                        .update({ share_code: code })
+                        .eq('id', deckId)
+                        .select('id, share_code')
+                        .single();
+                    if (!error && data?.share_code) {
+                        setDecks(prev => prev.map(d => d.id === deckId ? { ...d, share_code: data.share_code } : d));
+                        return data.share_code;
+                    }
+                    const msg = (error?.message || '').toLowerCase();
+                    const isCollision = error?.code === '23505' || msg.includes('duplicate') || msg.includes('unique');
+                    if (!isCollision) {
+                        console.error('Generate share code error:', error);
+                        pushToast({ variant: 'error', title: t.share, message: error?.message || t.shareGenerateFailed });
+                        return null;
+                    }
+                }
+                pushToast({ variant: 'error', title: t.share, message: t.shareGenerateUniqueFailed });
+                return null;
+            },
+            setShareCode: async (deckId, rawOrNull) => {
+                const next = rawOrNull === null ? null : normalizeShareCode(rawOrNull);
+                if (rawOrNull !== null && !next) {
+                    pushToast({ variant: 'error', title: t.share, message: t.shareInvalid });
+                    return { ok: false, kind: 'invalid' };
+                }
+
+                const { data, error } = await supabase
+                    .from('decks')
+                    .update({ share_code: next })
+                    .eq('id', deckId)
+                    .select('id, share_code')
+                    .single();
+
+                if (error) {
+                    const msg = (error?.message || '').toLowerCase();
+                    const isCollision = error?.code === '23505' || msg.includes('duplicate') || msg.includes('unique');
+                    if (isCollision) pushToast({ variant: 'error', title: t.share, message: t.shareTaken });
+                    else pushToast({ variant: 'error', title: t.share, message: error.message });
+                    return { ok: false, kind: 'error', message: error.message };
+                }
+
+                setDecks(prev => prev.map(d => d.id === deckId ? { ...d, share_code: data?.share_code || null } : d));
+                const message = data?.share_code ? `${t.shareCode}: ${data.share_code}` : t.shareDisabled;
+                pushToast({ variant: 'success', title: t.share, message, icon: data?.share_code ? 'link-2' : 'check' });
+                return { ok: true, code: data?.share_code || null };
+            },
+            startStudy: (id) => {
+                const d = decks.find(d => d.id === id);
+                if(!d.cards.length) return pushToast({ variant: 'error', title: d.title, message: TRANSLATIONS[lang].contentEmpty });
+                setActiveDeck(d); setView('study');
+            },
+            goHome: () => setView('home'),
+            openImport: () => setShowImport(true),
+            openSettings: () => setIsSettingsOpen(true),
+            
+            updateProgress: (deckId, index) => {
+                setDecks(prev => prev.map(d => d.id === deckId ? { ...d, progressIndex: index } : d));
+                const deck = decksRef.current.find(d => d.id === deckId);
+                if (!deck) return;
+                const updated = { ...deck, progressIndex: index };
+                clearTimeout(progressSaveTimeoutRef.current);
+                progressSaveTimeoutRef.current = setTimeout(async () => {
+                    await supabase
+                        .from('decks')
+                        .update({ content: deckToContent(updated) })
+                        .eq('id', deckId);
+                }, 650);
+            },
+            onExportSingle: (deck, format) => {
+                let content = "";
+                let filename = `${deck.title.replace(/\s+/g, '_')}_export`;
+                if (format === 'json') { content = JSON.stringify({ title: deck.title, desc: deck.desc, cards: deck.cards }, null, 2); filename += ".json"; } 
+                else { content = deck.cards.map(c => `${c.front}\n${c.back}`).join('\n\n'); filename += ".txt"; }
+                const dataStr = `data:text/${format};charset=utf-8,` + encodeURIComponent(content);
+                const node = document.createElement('a'); node.setAttribute("href", dataStr); node.setAttribute("download", filename);
+                document.body.appendChild(node); node.click(); node.remove();
+            },
+            resetData: async () => {
+                if (!confirm(TRANSLATIONS[lang].resetConfirm)) return;
+                const { error } = await supabase.from('decks').delete().eq('user_id', user.id);
+                if (error) return pushToast({ variant: 'error', title: t.resetData, message: error.message });
+                setDecks([]);
+                setIsSettingsOpen(false);
+                pushToast({ variant: 'success', title: t.resetData, message: t.resetDone, icon: 'check' });
+            },
+            exportData: () => { /* Bulk Export logic kept simple */ },
+            toggleMotion: () => setReduceMotion(!reduceMotion),
+            importDeck: async (data) => {
+                const ok = await canCreateAnotherDeck();
+                if (!ok) return;
+                const cards = (data.cards || []).slice(0, 1000).map((c, i) => ({
+                    id: c.id || `card-${Date.now()}-${i}`,
+                    front: c.front || '',
+                    back: c.back || ''
+                }));
+                const content = deckToContent({
+                    title: (data.title || '').trim() || t.imported,
+                    desc: (data.desc || '').trim() || t.aiGenerated,
+                    color: '#3b82f6',
+                    cards,
+                    progressIndex: 0
+                });
+                const { data: inserted, error } = await supabase
+                    .from('decks')
+                    .insert({ user_id: user.id, content })
+                    .select('*')
+                    .single();
+                if (error) return pushToast({ variant: 'error', title: t.import, message: error.message });
+                const insertedDeck = rowToDeck(inserted);
+                setDecks(prev => [insertedDeck, ...prev]);
+                setHighlightDeckId(insertedDeck.id);
+                try { confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 }, colors: ['#facc15', '#171717', '#ffffff'] }); } catch (_) {}
+                pushToast({ variant: 'success', title: t.import, message: insertedDeck.title, icon: 'sparkles' });
+            },
+            importShared: async (code) => {
+                const cleaned = (code || '').trim();
+                if (!cleaned) return;
+                const ok = await canCreateAnotherDeck();
+                if (!ok) return;
+
+                const { data: shared, error: fetchError } = await supabase
+                    .from('decks')
+                    .select('*')
+                    .ilike('share_code', cleaned)
+                    .single();
+                if (fetchError) return pushToast({ variant: 'error', title: t.importShared, message: fetchError.message });
+
+                const sourceContent = (shared && typeof shared.content === 'object' && shared.content) ? shared.content : {};
+                const deepCopy = JSON.parse(JSON.stringify(sourceContent));
+                const content = deckToContent({ ...deepCopy, progressIndex: 0 });
+
+                const { data: inserted, error: insertError } = await supabase
+                    .from('decks')
+                    .insert({ user_id: user.id, content })
+                    .select('*')
+                    .single();
+                if (insertError) return pushToast({ variant: 'error', title: t.importShared, message: insertError.message });
+                const insertedDeck = rowToDeck(inserted);
+                setDecks(prev => [insertedDeck, ...prev]);
+                setHighlightDeckId(insertedDeck.id);
+                try { confetti({ particleCount: 100, spread: 90, origin: { y: 0.62 }, colors: ['#facc15', '#171717', '#ffffff'] }); } catch (_) {}
+                pushToast({ variant: 'success', title: t.importShared, message: insertedDeck.title, icon: 'sparkles' });
+            }
+        };
+
+        if (isAuthLoading) return (<><FullScreenLoader label={TRANSLATIONS[lang].loading} /><Toast toast={toast} onDismiss={dismissToast} /></>);
+        if (!session) return (<><LoginView lang={lang} setLang={setLang} /><Toast toast={toast} onDismiss={dismissToast} /></>);
+        if (!user) return (<><FullScreenLoader label={TRANSLATIONS[lang].loading} /><Toast toast={toast} onDismiss={dismissToast} /></>);
+
+        return (
+            <>
+                {showGuide && <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[150]" />}
+                <GuideOverlay isOpen={showGuide} onDismiss={() => setShowGuide(false)} lang={lang} />
+                <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} onImport={actions.importDeck} onImportShared={actions.importShared} lang={lang} onToast={pushToast} />
+                <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} lang={lang} onRedeemCode={redeemProCode} onToast={pushToast} />
+                <ProCelebrationOverlay isOpen={showProCelebration} onClose={() => setShowProCelebration(false)} lang={lang} />
+                <ProWelcomeOverlay isOpen={showProWelcome} onClose={() => setShowProWelcome(false)} lang={lang} />
+                <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} lang={lang} user={user} />
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onReset={actions.resetData} onExport={actions.exportData} decks={decks} onExportSingle={actions.onExportSingle} reduceMotion={reduceMotion} toggleMotion={actions.toggleMotion} lang={lang} setLang={setLang} user={user} onSignOut={signOut} onRedeemCode={redeemProCode} onOpenAdmin={() => { setIsSettingsOpen(false); setIsAdminOpen(true); }} onToast={pushToast} />
+                {view === 'home' && <HomeView decks={decks} actions={actions} showGuide={showGuide} sortMode={sortMode} setSortMode={setSortMode} reduceMotion={reduceMotion} lang={lang} highlightDeckId={highlightDeckId} user={user} />}
+                {view === 'edit' && <EditView deck={activeDeck} actions={actions} lang={lang} />}
+                {view === 'study' && <StudyView deck={activeDeck} actions={actions} updateProgress={actions.updateProgress} lang={lang} />}
+                <Toast toast={toast} onDismiss={dismissToast} />
+            </>
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

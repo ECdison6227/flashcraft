@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkCraft - 极简 Markdown 工坊</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        craft: {
+                            black: '#171717', // CFDS Main Black
+                            gray: '#f5f5f7',  // CFDS Background
+                            yellow: '#facc15',// CFDS Brand Yellow
+                            border: '#e5e5e5',// CFDS Border
+                            text: '#1d1d1f',  // CFDS Text
+                            card: '#ffffff'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+                    },
+                    animation: {
+                        'blur-in': 'blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                        'scale-in': 'scaleIn 0.2s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        blurIn: {
+                            '0%': { filter: 'blur(12px)', opacity: '0', transform: 'scale(0.95)' },
+                            '100%': { filter: 'blur(0)', opacity: '1', transform: 'scale(1)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' }
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        /* --- 基础样式 --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f7; /* Craft Gray */
+            color: #1d1d1f;
+            overflow: hidden; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+
+        /* 编辑器样式 */
+        .editor-font {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        #editor {
+            width: 100%; height: 100%;
+            /* Padding moved to textarea itself for better text positioning */
+            padding: 2rem 3rem; 
+            background: transparent;
+            color: inherit;
+            outline: none; resize: none; border: none;
+        }
+        #editor::selection { background: #facc15; color: black; } /* Craft Yellow Selection */
+        
+        /* 预览区基础样式 */
+        .preview-wrapper {
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* Markdown 样式增强 - 匹配 CFDS 风格 */
+        .markdown-body { line-height: 1.8; color: inherit; }
+        .markdown-body h1 { font-size: 2.25em; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: -0.02em; border-bottom: 3px solid #facc15; display: inline-block; padding-bottom: 4px; color: inherit; }
+        .markdown-body h2 { font-size: 1.75em; font-weight: 700; margin-top: 2.5rem; margin-bottom: 1rem; color: inherit; letter-spacing: -0.01em; }
+        .markdown-body h3 { font-size: 1.4em; font-weight: 600; margin-top: 2rem; margin-bottom: 0.8rem; }
+        .markdown-body p { margin-bottom: 1.25rem; text-align: justify; opacity: 0.9; }
+        .markdown-body pre { border-radius: 12px; padding: 1.2rem; overflow-x: auto; margin-bottom: 1.5rem; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb; }
+        .markdown-body blockquote { border-left: 4px solid #facc15; padding: 0.5rem 1.2rem; margin-bottom: 1.5rem; background: rgba(250, 204, 21, 0.05); border-radius: 0 8px 8px 0; color: inherit; font-style: italic; }
+        .markdown-body code { padding: 0.2rem 0.4rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: rgba(0,0,0,0.05); color: inherit; }
+        .markdown-body img { max-width: 100%; border-radius: 12px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1); margin: 1.5rem 0; }
+        .markdown-body table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; border-style: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.05); }
+        .markdown-body th, .markdown-body td { border: 1px solid rgba(0,0,0,0.05); padding: 12px 16px; }
+        .markdown-body th { font-weight: 600; background-color: rgba(0,0,0,0.02); text-align: left; }
+        .markdown-body hr { height: 1px; background-color: rgba(0,0,0,0.1); border: none; margin: 2rem 0; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+        .markdown-body ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+        .markdown-body li { margin-bottom: 0.5rem; }
+
+        /* CFDS Toast Style */
+        #toast {
+            position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.9);
+            background: #171717; color: white;
+            padding: 12px 24px; border-radius: 9999px;
+            font-size: 14px; font-weight: 500;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+            display: flex; align-items: center; gap: 10px;
+            z-index: 10000; opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+
+        /* 模态框基础 */
+        dialog {
+            border: none; outline: none; background: transparent; padding: 0;
+            max-width: 100vw; max-height: 100vh;
+        }
+        dialog::backdrop { background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); transition: all 0.5s; }
+        
+        /* 交互状态类 */
+        .blur-active { filter: blur(12px); opacity: 0; transform: scale(0.98); transition: all 0.5s ease-out; }
+        .blur-clearing { animation: blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* 打印 */
+        @media print {
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 0; background: white; color: black; }
+            @page { size: auto; margin: 20mm; }
+        }
+        #print-area { display: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col relative overflow-hidden bg-craft-gray text-craft-text">
+
+    <!-- 打印替身 -->
+    <div id="print-area" class="markdown-body"></div>
+
+    <!-- Toast 通知 -->
+    <div id="toast">
+        <i data-lucide="check-circle" class="w-4 h-4 text-craft-yellow"></i>
+        <span id="toast-msg">操作成功</span>
+    </div>
+
+    <!-- 1. CFDS 用户引导 (Guide Overlay) -->
+    <div id="guide-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 bg-white/30 backdrop-blur-sm">
+        <div id="guide-modal" class="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative animate-float">
+            <div class="p-10 text-center">
+                <div class="space-y-8">
+                    <!-- Large Logo -->
+                    <div class="w-24 h-24 bg-craft-black rounded-2xl flex items-center justify-center mx-auto shadow-xl transform -rotate-3 transition-transform hover:rotate-0">
+                        <svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M20 80V20H35L50 50L65 20H80V80H70V35L55 65H45L30 35V80H20Z" fill="white"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-bold text-craft-black mb-3 tracking-tight">MarkCraft</h2>
+                        <p class="text-gray-500 text-sm leading-relaxed font-medium">
+                            Craft 系列效率工具。<br/>
+                            极简，克制，纯粹的写作体验。
+                        </p>
+                    </div>
+                    
+                    <!-- Feature List -->
+                    <div class="space-y-4 text-left px-2">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-craft-black shadow-sm"><i data-lucide="pen-tool" class="w-5 h-5"></i></div>
+                            <div><h4 class="font-bold text-sm text-craft-black">沉浸写作</h4><p class="text-xs text-gray-400">支持 LaTeX 公式与实时预览</p></div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-craft-black shadow-sm"><i data-lucide="wand-2" class="w-5 h-5"></i></div>
+                            <div><h4 class="font-bold text-sm text-craft-black">AI 润色</h4><p class="text-xs text-gray-400">智能修复格式与排版错误</p></div>
+                        </div>
+                    </div>
+
+                    <button onclick="enterApp()" class="w-full py-4 bg-craft-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 group">
+                        开始探索 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. CFDS 导出结果 (Export Result) -->
+    <div id="exportResultOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/60 backdrop-blur-md transition-all duration-500 hidden opacity-0 pointer-events-none">
+        <!-- Result Card -->
+        <div id="exportResult" class="relative flex flex-col items-center gap-6 p-8 bg-white rounded-[32px] shadow-2xl border border-gray-100 max-w-sm w-full mx-6 transform scale-95 opacity-0 transition-all duration-500">
+            <button onclick="closeExportResult(event)" class="absolute top-5 right-5 p-2 text-gray-400 hover:text-black rounded-full hover:bg-gray-50 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            
+            <div class="w-24 h-24 bg-craft-black rounded-2xl flex items-center justify-center text-craft-yellow shadow-xl animate-float">
+                <i id="exportIcon" data-lucide="file-check" class="w-10 h-10"></i>
+            </div>
+            
+            <div class="text-center space-y-1">
+                <h3 class="text-xl font-bold text-craft-black">文件处理完成</h3>
+                <p id="exportFilename" class="text-sm text-gray-400 font-mono max-w-[200px] truncate mx-auto">document.pdf</p>
+            </div>
+
+            <button onclick="triggerDownload()" class="w-full py-3.5 bg-craft-black text-white rounded-full font-bold text-sm flex items-center gap-2 hover:bg-gray-800 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 justify-center">
+                <i data-lucide="download" class="w-4 h-4"></i> 点击下载
+            </button>
+        </div>
+    </div>
+
+    <!-- 主应用容器 -->
+    <div id="app-container" class="flex-1 flex flex-col h-full overflow-hidden blur-active transition-none">
+        
+        <!-- CFDS Header -->
+        <header class="h-16 flex items-center justify-between px-6 shrink-0 bg-white/80 backdrop-blur-md border-b border-craft-border z-40 sticky top-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-craft-black rounded-lg flex items-center justify-center shadow-sm text-white transition-transform hover:scale-105">
+                    <svg width="18" height="18" viewBox="0 0 100 100" fill="none"><path d="M20 80V20H35L50 50L65 20H80V80H70V35L55 65H45L30 35V80H20Z" fill="white"/></svg>
+                </div>
+                <h1 class="font-bold text-lg tracking-tight text-craft-black hidden md:block">MarkCraft</h1>
+            </div>
+            
+            <!-- Toolbar -->
+            <div class="flex items-center gap-3">
+                <button onclick="openAIModal()" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-200 text-gray-600 rounded-xl hover:border-craft-black hover:text-craft-black transition-all font-medium shadow-sm active:scale-95 group">
+                    <i data-lucide="wand-2" class="w-4 h-4 text-craft-yellow group-hover:text-craft-black transition-colors"></i>
+                    <span class="hidden sm:inline">AI 润色</span>
+                </button>
+                
+                <div class="h-6 w-px bg-gray-200"></div>
+                
+                <div class="flex bg-gray-100 p-1 rounded-xl">
+                    <button onclick="exportImage()" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-craft-black hover:shadow-sm transition-all" title="导出长图"><i data-lucide="image" class="w-4 h-4"></i></button>
+                    <button onclick="downloadMarkdown()" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-craft-black hover:shadow-sm transition-all" title="下载 MD"><i data-lucide="download" class="w-4 h-4"></i></button>
+                    <button onclick="openPdfOptions()" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-craft-black hover:shadow-sm transition-all" title="导出 PDF"><i data-lucide="file-down" class="w-4 h-4"></i></button>
+                </div>
+                
+                <button onclick="openSettingsModal()" class="p-2.5 text-gray-500 hover:bg-gray-100 hover:text-craft-black rounded-full transition-colors" title="设置"><i data-lucide="settings" class="w-5 h-5"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+            
+            <!-- Left Pane: Editor (Symmetrized) -->
+            <div class="flex-1 bg-craft-gray relative overflow-hidden flex flex-col">
+                <div class="absolute top-4 right-6 text-[10px] font-bold text-gray-400 select-none pointer-events-none uppercase tracking-widest z-10">Markdown Input</div>
+                <div class="w-full h-full p-4 md:p-8">
+                    <!-- Editor Card: Matches the visual style of Preview Card -->
+                    <div class="w-full h-full bg-white shadow-sm rounded-2xl relative overflow-hidden transition-all duration-300">
+                         <textarea id="editor" class="editor-font placeholder-gray-300 w-full h-full bg-transparent outline-none resize-none" placeholder="在此输入 Markdown..." spellcheck="false"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Divider -->
+            <div class="hidden md:block w-px bg-craft-border z-10"></div>
+            
+            <!-- Right Pane: Preview (Symmetrized) -->
+            <div class="flex-1 bg-craft-gray relative overflow-hidden">
+                <div class="absolute top-4 right-6 text-[10px] font-bold text-gray-400 select-none pointer-events-none uppercase tracking-widest z-20">Live Preview</div>
+                <div class="w-full h-full overflow-y-auto p-4 md:p-8 custom-scrollbar">
+                    <!-- Preview Card: Matches Editor Card -->
+                    <div id="preview" class="preview-wrapper markdown-body min-h-full w-full p-8 md:p-12 bg-white shadow-sm rounded-2xl transition-all duration-300"></div>
+                    <div class="h-8"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- CFDS Settings Modal -->
+    <dialog id="settingsModal" class="m-auto">
+        <div class="w-full max-w-sm min-w-[320px]">
+            <div class="bg-white rounded-[32px] shadow-2xl overflow-hidden animate-scale-in">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-craft-black flex items-center gap-2">设置</h3>
+                    <button onclick="closeModal('settingsModal')" class="text-gray-400 hover:text-black transition-colors rounded-full p-1 hover:bg-gray-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">纸张风格</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button onclick="setPaper('white')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                                <div class="w-8 h-8 rounded-full border border-gray-200 bg-white shadow-sm group-hover:scale-110 transition-transform"></div>
+                                <span class="text-sm font-medium text-craft-text">简约白 (Standard)</span>
+                            </button>
+                            <button onclick="setPaper('warm')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                                <div class="w-8 h-8 rounded-full border border-gray-200 bg-[#fefce8] shadow-sm group-hover:scale-110 transition-transform"></div>
+                                <span class="text-sm font-medium text-craft-text">护眼黄 (Warm)</span>
+                            </button>
+                            <button onclick="setPaper('dark_yellow')" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                                <div class="w-8 h-8 rounded-full border border-gray-600 bg-[#171717] flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform"><div class="w-3 h-3 rounded-full bg-craft-yellow"></div></div>
+                                <span class="text-sm font-medium text-craft-text">黑金流 (MarkCraft)</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <p class="text-[10px] text-center text-gray-300 font-mono">MarkCraft v2.2 • Efficiency Series</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- AI Modal -->
+    <dialog id="aiModal" class="m-auto">
+        <div class="w-full max-w-md min-w-[320px]">
+            <div class="bg-white rounded-[32px] shadow-2xl overflow-hidden animate-scale-in">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-craft-black flex items-center gap-2">
+                        <i data-lucide="wand-2" class="w-5 h-5 text-craft-yellow"></i> AI 智能润色
+                    </h3>
+                    <button onclick="closeModal('aiModal')" class="text-gray-400 hover:text-black transition-colors rounded-full p-1 hover:bg-gray-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <button onclick="aiBeautifyGemini()" class="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                        <div class="w-10 h-10 bg-craft-black rounded-xl text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-craft-black">内置引擎 (Gemini)</div>
+                            <div class="text-xs text-gray-400 mt-0.5">自动修复格式、公式与排版</div>
+                        </div>
+                    </button>
+
+                    <button onclick="showPromptUI()" class="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                        <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl text-black flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-craft-black">复制专家指令 (Prompt)</div>
+                            <div class="text-xs text-gray-400 mt-0.5">获取 Prompt 发送给 ChatGPT/Claude</div>
+                        </div>
+                    </button>
+                    
+                    <div id="prompt-container" class="hidden pt-2 animate-slide-up">
+                        <textarea id="prompt-text" class="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600 font-mono resize-none focus:ring-1 focus:ring-craft-black focus:border-craft-black outline-none mb-2" readonly></textarea>
+                        <button onclick="confirmCopy()" class="w-full py-3 bg-craft-black text-white font-bold text-sm rounded-xl hover:bg-gray-800 transition-all shadow-lg active:scale-95">
+                            确认复制
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- PDF Options Modal -->
+    <dialog id="pdfModal" class="m-auto">
+        <div class="w-full max-w-sm min-w-[300px]">
+            <div class="bg-white rounded-[32px] shadow-2xl overflow-hidden animate-scale-in">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-craft-black">导出 PDF</h3>
+                    <button onclick="closeModal('pdfModal')" class="text-gray-400 hover:text-black"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <button onclick="processPdfDirect()" class="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                        <div class="w-10 h-10 bg-craft-black rounded-xl text-white flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="download" class="w-5 h-5"></i></div>
+                        <div><div class="font-bold text-sm text-craft-black">直接下载文件</div><div class="text-xs text-gray-400">生成高清 A4 PDF 文件</div></div>
+                    </button>
+                    <button onclick="processPdfPrint()" class="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-craft-black hover:bg-gray-50 transition-all text-left group">
+                        <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl text-black flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="printer" class="w-5 h-5"></i></div>
+                        <div><div class="font-bold text-sm text-craft-black">调用浏览器打印</div><div class="text-xs text-gray-400">使用系统打印机进行设置</div></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        const apiKey = "";
+        lucide.createIcons();
+
+        // --- Core ---
+        const md = window.markdownit({ html: true, breaks: true, linkify: true, typographer: true }).use(window.texmath, { engine: window.katex, delimiters: 'dollars', katexOptions: { macros: { "\\RR": "\\mathbb{R}" } } });
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const appContainer = document.getElementById('app-container');
+        
+        let currentDownloadUrl = null;
+        let currentDownloadName = '';
+        let currentPaper = 'white';
+
+        const paperStyles = {
+            white: { bg: '#ffffff', text: '#1d1d1f', name: '简约白' },
+            warm:  { bg: '#fefce8', text: '#422006', name: '护眼黄' },
+            dark_yellow: { bg: '#171717', text: '#facc15', name: '黑金流' },
+        };
+
+        // --- Guide Logic ---
+        function enterApp() {
+            const overlay = document.getElementById('guide-overlay');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            // Trigger Blur-Clear on main app
+            appContainer.classList.remove('blur-active');
+            void appContainer.offsetWidth; // trigger reflow
+            appContainer.classList.add('blur-clearing');
+            
+            setTimeout(() => overlay.remove(), 500);
+        }
+
+        // --- Settings & Paper ---
+        function openSettingsModal() { document.getElementById('settingsModal').showModal(); }
+        
+        function setPaper(style) {
+            currentPaper = style;
+            const s = paperStyles[style];
+            const isDark = style.includes('dark');
+            
+            // Editor Styling (Synced)
+            // Note: Editor wrapper is always white card for light modes, black card for dark modes
+            const editorWrapper = document.getElementById('editor').parentElement;
+            editorWrapper.style.backgroundColor = isDark ? '#171717' : '#ffffff';
+            document.getElementById('editor').style.color = s.text;
+
+            // Preview Styling
+            preview.style.backgroundColor = s.bg;
+            preview.style.color = s.text;
+            
+            const codeBlocks = preview.querySelectorAll('pre');
+            codeBlocks.forEach(b => {
+                b.style.background = isDark ? '#262626' : '#f9fafb';
+                b.style.color = isDark ? '#eee' : '#1d1d1f';
+                b.style.borderColor = isDark ? '#404040' : 'rgba(0,0,0,0.05)';
+            });
+            
+            // Special styling for dark mode titles
+            const titles = preview.querySelectorAll('h1, h2, h3');
+            titles.forEach(t => t.style.color = isDark ? '#facc15' : 'inherit');
+
+            closeModal('settingsModal');
+            showToast(`已切换至: ${s.name}`);
+        }
+
+        // --- Core Functions ---
+        function showToast(msg) { 
+            const t = document.getElementById('toast'); 
+            document.getElementById('toast-msg').innerText = msg; 
+            t.classList.add('show'); 
+            setTimeout(() => t.classList.remove('show'), 3000); 
+        }
+        
+        function triggerConfetti() { 
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#facc15', '#171717', '#ffffff'] }); 
+        }
+        
+        function syncEditor() {
+            try {
+                // Pre-process: Convert LaTeX block delimiters \[ ... \] to $$...$$ for compatibility
+                let rawContent = editor.value
+                    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$') // \[ ... \] -> $$...$$
+                    .replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');   // \( ... \) -> $...$ (optional, but good for completeness)
+
+                let raw = md.render(rawContent);
+                preview.innerHTML = DOMPurify.sanitize(raw, { ADD_TAGS: ['math','annotation','semantics','mn','mo','mi','msup','msub','mfrac','mroot','msqrt','mtable','mtr','mtd','mlabeledtr','mrow','span','svg','path'], ADD_ATTR: ['class','style','aria-hidden','xmlns','viewBox','d','fill','height','width'] });
+                preview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+                setPaper(currentPaper); // Re-apply style
+            } catch(e) { console.error(e); }
+        }
+        editor.addEventListener('input', syncEditor);
+
+        // --- Modals ---
+        function closeModal(id) { document.getElementById(id).close(); }
+        // Close on backdrop click
+        document.querySelectorAll('dialog').forEach(d => {
+            d.addEventListener('click', (e) => {
+                const rect = d.querySelector('div').getBoundingClientRect();
+                if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) d.close();
+            });
+        });
+
+        // --- Export Logic ---
+        function openPdfOptions() { document.getElementById('pdfModal').showModal(); }
+        
+        function showExportResult(type, url, filename) {
+            currentDownloadUrl = url;
+            currentDownloadName = filename;
+            
+            const overlay = document.getElementById('exportResultOverlay');
+            const card = document.getElementById('exportResult');
+            const icon = document.getElementById('exportIcon');
+            const nameEl = document.getElementById('exportFilename');
+
+            overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+            
+            // Set Content
+            nameEl.innerText = filename;
+            icon.setAttribute('data-lucide', type === 'pdf' ? 'file-text' : 'image');
+            lucide.createIcons();
+
+            // Animate Card
+            setTimeout(() => {
+                card.classList.remove('scale-95', 'opacity-0');
+                card.classList.add('scale-100', 'opacity-100');
+            }, 100);
+        }
+
+        function closeExportResult(e) {
+            if(e) e.stopPropagation();
+            const overlay = document.getElementById('exportResultOverlay');
+            const card = document.getElementById('exportResult');
+            
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                overlay.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+            }, 300);
+        }
+
+        function triggerDownload() {
+            if (!currentDownloadUrl) return;
+            const link = document.createElement('a');
+            link.href = currentDownloadUrl;
+            link.download = currentDownloadName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            triggerConfetti();
+            closeExportResult();
+        }
+
+        function processPdfDirect() {
+            closeModal('pdfModal');
+            showToast("正在生成 PDF...");
+            
+            const opt = { margin: 10, filename: `MarkCraft_${Date.now()}.pdf`, image: {type:'jpeg', quality:0.98}, html2canvas: {scale: 2, useCORS:true}, jsPDF: {unit:'mm', format:'a4', orientation:'portrait'} };
+            
+            html2pdf().set(opt).from(preview).toPdf().get('pdf').then(pdf => {
+                const blob = pdf.output('blob');
+                const url = URL.createObjectURL(blob);
+                showExportResult('pdf', url, opt.filename);
+            });
+        }
+
+        function processPdfPrint() {
+            closeModal('pdfModal');
+            document.getElementById('print-area').innerHTML = preview.innerHTML;
+            setTimeout(() => window.print(), 500);
+        }
+
+        function exportImage() {
+            showToast("正在生成长图...");
+            // Clone style to reset overflow for full capture
+            const originalStyle = preview.getAttribute('style');
+            preview.style.height = 'auto'; preview.style.overflow = 'visible'; preview.style.boxShadow = 'none';
+            
+            html2canvas(preview, { scale: 2, useCORS: true }).then(canvas => {
+                const url = canvas.toDataURL('image/png');
+                showExportResult('image', url, 'MarkCraft_Snapshot.png');
+            }).finally(() => {
+                preview.setAttribute('style', originalStyle || '');
+                setPaper(currentPaper);
+            });
+        }
+
+        function downloadMarkdown() {
+            const blob = new Blob([editor.value], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            showExportResult('markdown', url, 'document.md');
+        }
+
+        // --- AI ---
+        function openAIModal() { 
+            if(!editor.value.trim()){ showToast("请先输入内容"); return; } 
+            document.getElementById('prompt-container').classList.add('hidden'); 
+            document.getElementById('aiModal').showModal(); 
+        }
+        
+        async function aiBeautifyGemini() {
+            showToast("AI 正在思考..."); closeModal('aiModal');
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ contents:[{parts:[{text:editor.value}]}], systemInstruction:{parts:[{text:`Process input to clean Markdown. Rules: Fix format, LaTeX math ($), structure. Output ONLY Markdown.`}]}}) });
+                const d = await res.json();
+                if(d.candidates?.[0]?.content?.parts?.[0]?.text) { 
+                    editor.value = d.candidates[0].content.parts[0].text; 
+                    syncEditor(); 
+                    showToast("AI 润色完成"); 
+                    triggerConfetti(); 
+                }
+            } catch(e){ showToast("AI 服务繁忙"); }
+        }
+
+        function showPromptUI() {
+            document.getElementById('prompt-container').classList.remove('hidden');
+            const prompt = `你是一个专业的 Markdown 排版专家。请处理以下文本：\n\n1. 修复 LaTeX 公式 ($)。\n2. 修复粗体空格错误。\n3. 优化标题层级。\n\n**原文：**\n${editor.value}`;
+            document.getElementById('prompt-text').value = prompt;
+        }
+
+        function confirmCopy() {
+            document.getElementById('prompt-text').select();
+            document.execCommand('copy');
+            showToast("指令已复制");
+            setTimeout(() => closeModal('aiModal'), 500);
+        }
+
+        // --- Init ---
+        const defaultText = `# MarkCraft v2.2\n\n欢迎来到全新的 **MarkCraft**。\n\n## 设计语言\n遵循 **Craft Family Design System (CFDS)**，带来极致纯粹的写作体验。\n\n## 交互演示\n- 点击右上角 **AI 润色** 体验智能排版。\n- 点击 **设置** 切换「黑金流」暗色模式。\n\n## 数学公式\n$$e^{i\\pi} + 1 = 0$$\n`;
+        editor.value = defaultText;
+        syncEditor();
+    </script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoteCraft - 错题工坊 v2.3</title>
+    
+    <!-- 核心依赖 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 功能库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Craft Family Design System (CFDS) Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        craft: {
+                            black: '#171717',
+                            gray: '#f5f5f7',
+                            yellow: '#facc15',
+                            border: '#e5e5e5',
+                            text: '#1d1d1f'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+                    },
+                    animation: {
+                        'blur-in': 'blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                        'scale-in': 'scaleIn 0.2s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        blurIn: {
+                            '0%': { filter: 'blur(12px)', opacity: '0', transform: 'scale(0.98)' },
+                            '100%': { filter: 'blur(0)', opacity: '1', transform: 'scale(1)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' }
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f5f5f7; 
+            color: #1d1d1f; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #content-to-export, #content-to-export * { visibility: visible; }
+            #content-to-export { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+        }
+
+        .blur-active { filter: blur(12px); opacity: 0; transform: scale(0.98); transition: all 0.5s ease-out; }
+        .blur-clearing { animation: blurIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useLayoutEffect } = React;
+
+        // --- 1. 基础组件 ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const ref = useRef(null);
+            useLayoutEffect(() => {
+                if (ref.current) {
+                    ref.current.innerHTML = '';
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', name);
+                    i.setAttribute('width', size);
+                    i.setAttribute('height', size);
+                    if (className) i.setAttribute('class', className);
+                    ref.current.appendChild(i);
+                    lucide.createIcons({ root: ref.current, nameAttr: 'data-lucide' });
+                }
+            }, [name, size, className]);
+            return <span ref={ref} className="inline-flex items-center justify-center"></span>;
+        };
+
+        const Logo = () => (
+            <div className="w-8 h-8 bg-craft-black rounded-lg flex items-center justify-center shadow-sm animate-float">
+                <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
+                    <path d="M30 75V25H45L70 55V25H80V75H65L40 45V75H30Z" fill="white" />
+                </svg>
+            </div>
+        );
+
+        // --- 2. 引导层 ---
+        const GuideOverlay = ({ onDismiss }) => {
+            return (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-white/30 backdrop-blur-md transition-all duration-500">
+                    <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative animate-float">
+                        <div className="p-8 text-center">
+                            <div className="space-y-6">
+                                <div className="w-20 h-20 bg-craft-black rounded-2xl flex items-center justify-center mx-auto shadow-xl transform -rotate-3">
+                                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none"><path d="M30 75V25H45L70 55V25H80V75H65L40 45V75H30Z" fill="white" /></svg>
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-craft-black mb-2">NoteCraft</h2>
+                                    <p className="text-gray-500 text-sm leading-relaxed">
+                                        Craft 系列效率工具。<br/>
+                                        智能错题排版，极简，纯粹。
+                                    </p>
+                                </div>
+                                <div className="space-y-3 text-left">
+                                    <GuideItem icon="upload" title="拖拽上传" desc="支持多图批量处理" />
+                                    <GuideItem icon="grid" title="动态网格" desc="支持 1-5 列自由切换" />
+                                    <GuideItem icon="file-down" title="高清导出" desc="PDF 与长图支持" />
+                                </div>
+                                <button onClick={onDismiss} className="w-full py-3.5 bg-craft-black text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 group">
+                                    进入工坊 <Icon name="chevron-right" size={16} className="group-hover:translate-x-1 transition-transform"/>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GuideItem = ({ icon, title, desc }) => (
+            <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-yellow-50 transition-colors group">
+                <div className="bg-white p-2 rounded-lg shadow-sm text-black group-hover:text-craft-yellow transition-colors"><Icon name={icon} size={18}/></div>
+                <div><h4 className="font-bold text-sm text-craft-black">{title}</h4><p className="text-xs text-gray-500">{desc}</p></div>
+            </div>
+        );
+
+        // --- 3. 结果弹窗 ---
+        const ExportResult = ({ type, filename, onDownload, onClose }) => (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center bg-white/60 backdrop-blur-md transition-all duration-500">
+                <div className="relative flex flex-col items-center gap-6 p-8 bg-white rounded-[32px] shadow-2xl animate-scale-in border border-gray-100 max-w-sm w-full mx-4">
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-black rounded-full hover:bg-gray-100 transition-colors"><Icon name="x" size={20}/></button>
+                    
+                    <div className="w-24 h-24 bg-craft-black rounded-2xl flex items-center justify-center text-craft-yellow shadow-xl animate-float">
+                        <Icon name={type === 'pdf' ? 'file-text' : 'image'} size={48} />
+                    </div>
+                    
+                    <div className="text-center">
+                        <h3 className="text-xl font-bold text-craft-black mb-1">文件处理完成</h3>
+                        <p className="text-sm text-gray-400 font-mono max-w-[200px] truncate mx-auto">{filename}</p>
+                    </div>
+
+                    <button onClick={onDownload} className="w-full py-3 bg-craft-black text-white rounded-full font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-all shadow-lg hover:-translate-y-0.5">
+                        <Icon name="download" size={16} /> 点击下载
+                    </button>
+                </div>
+            </div>
+        );
+
+        // --- 4. 主应用逻辑 ---
+        function App() {
+            const [showGuide, setShowGuide] = useState(true);
+            const [images, setImages] = useState([]);
+            const [isDragging, setIsDragging] = useState(false);
+            const [paperStyle, setPaperStyle] = useState('white');
+            const [defaultFilter, setDefaultFilter] = useState('scan'); 
+            const [gridColumns, setGridColumns] = useState(2); 
+            const [showSettings, setShowSettings] = useState(false);
+            const [showAiModal, setShowAiModal] = useState(false);
+            const [aiJsonInput, setAiJsonInput] = useState('');
+            
+            // 导出相关
+            const [isExporting, setIsExporting] = useState(false);
+            const [exportData, setExportData] = useState(null); 
+
+            const contentRef = useRef(null);
+
+            // 纸张样式定义
+            const getPaperStyles = () => {
+                switch(paperStyle) {
+                    case 'yellow': return { bg: '#fefce8', text: '#000' };
+                    case 'kraft': return { bg: '#f5f5dc', text: '#000', image: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")` };
+                    case 'black': return { bg: '#171717', text: '#888' };
+                    default: return { bg: '#ffffff', text: '#000' };
+                }
+            };
+            const currentStyle = getPaperStyles();
+
+            const triggerSuccess = () => confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#facc15', '#000000', '#ffffff'] });
+
+            // 逻辑：图片处理
+            const processFiles = (files) => {
+                const newImgs = Array.from(files).filter(f => f.type.startsWith('image/')).map(f => ({
+                    id: Date.now() + Math.random().toString(36).substr(2, 9),
+                    url: URL.createObjectURL(f),
+                    width: 'half', 
+                    filter: defaultFilter 
+                }));
+                if(newImgs.length) {
+                    setImages(prev => [...prev, ...newImgs]);
+                    triggerSuccess();
+                }
+            };
+
+            // 全局粘贴监听
+            useEffect(() => {
+                const handlePaste = (e) => {
+                    if (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName)) return;
+                    const items = e.clipboardData.items;
+                    const files = [];
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf('image') !== -1) files.push(items[i].getAsFile());
+                    }
+                    if (files.length > 0) processFiles(files);
+                };
+                window.addEventListener('paste', handlePaste);
+                return () => window.removeEventListener('paste', handlePaste);
+            }, [defaultFilter]); 
+
+            // 逻辑：导出 PDF
+            const handleExportPdf = () => {
+                if(!images.length) return alert("空空如也");
+                setIsExporting(true);
+                const filename = `NoteCraft_${Date.now()}.pdf`;
+                const opt = { margin: 10, filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                
+                html2pdf().set(opt).from(contentRef.current).toPdf().get('pdf').then(pdf => {
+                    const blob = pdf.output('blob');
+                    const url = URL.createObjectURL(blob);
+                    setExportData({ type: 'pdf', url, filename });
+                    setIsExporting(false);
+                });
+            };
+
+            // 逻辑：导出长图
+            const handleExportImg = () => {
+                if(!images.length) return alert("空空如也");
+                setIsExporting(true);
+                html2canvas(contentRef.current, { scale: 2, useCORS: true, backgroundColor: currentStyle.bg }).then(canvas => {
+                    const url = canvas.toDataURL('image/png');
+                    setExportData({ type: 'image', url, filename: `NoteCraft_${Date.now()}.png` });
+                    setIsExporting(false);
+                });
+            };
+
+            // AI 逻辑
+            const handleAiArrange = () => {
+                try {
+                    let jsonStr = aiJsonInput.trim();
+                    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '');
+                    
+                    const layoutData = JSON.parse(jsonStr);
+                    if (!Array.isArray(layoutData)) throw new Error("Not Array");
+
+                    const layoutMap = new Map(layoutData.map(item => [item.id, item.width]));
+
+                    const newImages = images.map(img => {
+                        if (layoutMap.has(img.id)) {
+                            return { ...img, width: layoutMap.get(img.id) }; 
+                        }
+                        return img;
+                    });
+                    
+                    setImages(newImages);
+                    setShowAiModal(false);
+                    setAiJsonInput('');
+                    triggerSuccess();
+                } catch(e) { 
+                    alert("JSON 格式错误，请确保 AI 返回的是纯 JSON 数组。\n例如: [{\"id\": \"abc\", \"width\": \"full\"}]"); 
+                }
+            };
+            
+            const generatePrompt = () => {
+                const data = images.map(img => ({ id: img.id, note: "Analyze image complexity" }));
+                return `Please arrange these images for an A4 paper layout. The current layout grid is ${gridColumns} columns.
+Rules: 
+1. Complex/Wide images -> "width": "full" (Takes entire row). 
+2. Standard images -> "width": "half" (Takes 1/${gridColumns} row width).
+Input: ${JSON.stringify(data)}. 
+Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
+            };
+
+            // 兼容性复制
+            const copyToClipboard = (text) => {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => alert("已复制"))
+                        .catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            };
+
+            const fallbackCopy = (text) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("已复制");
+                } catch (err) {
+                    alert("复制失败，请手动复制");
+                }
+                document.body.removeChild(textArea);
+            };
+
+            const changeFilter = (id, type) => {
+                setImages(images.map(img => img.id === id ? { ...img, filter: type } : img));
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col relative overflow-hidden">
+                    {/* 引导层 */}
+                    {showGuide && <GuideOverlay onDismiss={() => setShowGuide(false)} />}
+                    
+                    {/* 导出结果层 */}
+                    {exportData && (
+                        <ExportResult 
+                            type={exportData.type} 
+                            filename={exportData.filename} 
+                            onDownload={() => {
+                                const a = document.createElement('a'); a.href = exportData.url; a.download = exportData.filename; a.click();
+                                setExportData(null);
+                            }} 
+                            onClose={() => setExportData(null)} 
+                        />
+                    )}
+
+                    {/* Loading 层 */}
+                    {isExporting && (
+                        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-white/60 backdrop-blur-md">
+                            <div className="flex flex-col items-center gap-4 animate-pulse">
+                                <div className="w-12 h-12 border-4 border-gray-200 border-t-craft-black rounded-full animate-spin"></div>
+                                <p className="text-gray-500 font-medium text-sm">Crafting...</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 主界面 */}
+                    <div className={`flex-1 flex flex-col transition-all duration-700 ${showGuide ? 'blur-active' : 'blur-clearing'}`}>
+                        
+                        {/* Header */}
+                        <header className="h-16 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40">
+                            <div className="flex items-center gap-3">
+                                <Logo />
+                                <h1 className="font-bold text-xl tracking-tight text-craft-black hidden md:block">NoteCraft</h1>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button onClick={() => setShowAiModal(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-transparent hover:border-gray-300">
+                                    <Icon name="wand-2" size={16} /> <span className="hidden sm:inline">AI 排版</span>
+                                </button>
+                                <div className="h-6 w-px bg-gray-200"></div>
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                    <button onClick={handleExportImg} className="p-1.5 rounded-md hover:bg-white hover:shadow-sm transition-all text-gray-600" title="长图"><Icon name="image" size={18}/></button>
+                                    <button onClick={handleExportPdf} className="p-1.5 rounded-md hover:bg-white hover:shadow-sm transition-all text-gray-600" title="PDF"><Icon name="file-down" size={18}/></button>
+                                </div>
+                                <button onClick={() => setShowSettings(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"><Icon name="settings" size={20}/></button>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full">
+                            
+                            {/* 上传区域 */}
+                            <div 
+                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={(e) => { e.preventDefault(); setIsDragging(false); processFiles(e.dataTransfer.files); }}
+                                className={`relative group mb-8 h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all duration-300 animate-float cursor-pointer overflow-hidden ${isDragging ? 'border-craft-black bg-gray-50 scale-[1.02]' : 'border-gray-300 bg-white hover:border-craft-black hover:bg-gray-50'}`}
+                            >
+                                <input type="file" multiple accept="image/*" onChange={(e) => processFiles(e.target.files)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                <div className="p-3 bg-gray-100 rounded-full text-gray-500 group-hover:bg-craft-black group-hover:text-craft-yellow transition-colors mb-2">
+                                    <Icon name="upload" size={20} />
+                                </div>
+                                <p className="text-sm font-medium text-gray-400 group-hover:text-gray-600">点击上传 或 拖拽图片 (Ctrl+V)</p>
+                            </div>
+
+                            {/* 编辑区域 (纸张) */}
+                            {images.length > 0 ? (
+                                <div className="flex justify-center pb-20 animate-slide-up">
+                                    <div 
+                                        ref={contentRef}
+                                        id="content-to-export"
+                                        className="w-full md:w-[210mm] min-h-[297mm] shadow-2xl rounded-sm p-[10mm] transition-colors duration-500 relative"
+                                        style={{ 
+                                            backgroundColor: currentStyle.bg, 
+                                            color: currentStyle.text,
+                                            backgroundImage: currentStyle.image || 'none'
+                                        }}
+                                    >
+                                        <div className="flex flex-wrap content-start gap-4">
+                                            {images.map((img, idx) => {
+                                                const widthStyle = img.width === 'full' 
+                                                    ? '100%' 
+                                                    : `calc((100% - ${(gridColumns - 1) * 16}px) / ${gridColumns})`;
+
+                                                return (
+                                                    <div 
+                                                        key={img.id} 
+                                                        className={`relative group transition-all duration-500 ease-out break-inside-avoid`}
+                                                        style={{ 
+                                                            width: widthStyle,
+                                                            animationDelay: `${idx * 0.1}s` 
+                                                        }}
+                                                    >
+                                                        {/* FIX: Removed overflow-hidden, Added min-h-[120px] and flex-col for centering */}
+                                                        <div className="relative bg-white rounded-lg border border-black/5 shadow-sm hover:shadow-xl hover:scale-[1.005] transition-all duration-300 group hover:ring-2 hover:ring-craft-yellow min-h-[120px] flex flex-col justify-center">
+                                                            <img 
+                                                                src={img.url} 
+                                                                className={`w-full h-auto object-contain block rounded-lg ${img.filter === 'scan' ? 'contrast-125 brightness-105 grayscale' : (img.filter === 'bw' ? 'contrast-150 grayscale brightness-110' : '')}`} 
+                                                            />
+                                                            
+                                                            {/* 悬浮控制条 */}
+                                                            <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 z-20">
+                                                                {/* 尺寸与删除 */}
+                                                                <div className="flex bg-craft-black text-white rounded-lg p-1 shadow-lg self-end">
+                                                                    <button onClick={() => {
+                                                                        const newImages = [...images];
+                                                                        newImages[idx].width = newImages[idx].width === 'full' ? 'half' : 'full';
+                                                                        setImages(newImages);
+                                                                    }} className="p-1.5 hover:text-craft-yellow" title={img.width === 'full' ? "切换为网格" : "全宽显示"}><Icon name={img.width === 'full' ? "minimize-2" : "maximize-2"} size={14}/></button>
+                                                                    <div className="w-px bg-white/20 mx-1"></div>
+                                                                    <button onClick={() => {
+                                                                        setImages(images.filter(i => i.id !== img.id));
+                                                                    }} className="p-1.5 hover:text-red-400"><Icon name="trash-2" size={14}/></button>
+                                                                </div>
+                                                                
+                                                                {/* 滤镜切换 */}
+                                                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md rounded-lg p-1 shadow-lg text-black border border-gray-100">
+                                                                    {['original', 'scan', 'bw'].map((t) => (
+                                                                        <button
+                                                                            key={t}
+                                                                            onClick={() => changeFilter(img.id, t)}
+                                                                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                                                                                img.filter === t
+                                                                                ? 'bg-craft-yellow text-black'
+                                                                                : 'hover:bg-gray-100 text-gray-500'
+                                                                            }`}
+                                                                        >
+                                                                            {t === 'original' ? '原' : t === 'scan' ? '扫' : '黑'}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {/* 滤镜标签 */}
+                                                            <div className="absolute bottom-2 left-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" data-html2canvas-ignore>
+                                                                <span className="px-2 py-0.5 bg-black/50 text-white text-[10px] rounded-full backdrop-blur font-mono">
+                                                                    {img.filter.toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute -top-4 left-0 text-[8px] text-gray-300 font-mono opacity-0 group-hover:opacity-100 transition-opacity select-all">
+                                                            ID: {img.id}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="mt-12 pt-4 border-t border-black/10 text-center text-[10px] font-mono opacity-40 select-none">
+                                            GENERATED WITH NOTECRAFT
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-20 opacity-40 select-none animate-float">
+                                    <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                                        <Icon name="layers" size={40} className="text-gray-400" />
+                                    </div>
+                                    <p className="font-mono text-sm">Waiting for content...</p>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+
+                    {/* Modals: Settings */}
+                    {showSettings && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-blur-in" onClick={() => setShowSettings(false)}>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-float" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-lg">设置</h3>
+                                    <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-black"><Icon name="x" size={20}/></button>
+                                </div>
+                                <div className="p-6 space-y-6">
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">纸张风格</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {['white', 'yellow', 'kraft', 'black'].map(s => (
+                                                <button 
+                                                    key={s} 
+                                                    onClick={() => setPaperStyle(s)}
+                                                    className={`p-3 rounded-xl border text-sm font-medium flex items-center gap-2 transition-all ${paperStyle === s ? 'border-craft-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                                >
+                                                    <div className={`w-3 h-3 rounded-full border border-black/10 ${s === 'white' ? 'bg-white' : (s === 'yellow' ? 'bg-[#fefce8]' : (s === 'black' ? 'bg-[#171717]' : 'bg-[#f5f5dc]'))}`}></div>
+                                                    {s === 'white' ? '简约白' : (s === 'yellow' ? '护眼黄' : (s === 'black' ? '暗夜黑' : '牛皮纸'))}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">每行数量 (Grid Columns)</label>
+                                        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
+                                            {[1, 2, 3, 4, 5].map(col => (
+                                                <button
+                                                    key={col}
+                                                    onClick={() => setGridColumns(col)}
+                                                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${gridColumns === col ? 'bg-white shadow-sm text-craft-black ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                >
+                                                    {col}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">默认滤镜</label>
+                                        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
+                                            {['original', 'scan', 'bw'].map(t => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setDefaultFilter(t)}
+                                                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${defaultFilter === t ? 'bg-white shadow-sm text-black' : 'text-gray-400 hover:text-gray-600'}`}
+                                                >
+                                                    {t === 'original' ? '原图' : t === 'scan' ? '扫描' : '黑白'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modals: AI */}
+                    {showAiModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-blur-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-float">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-lg flex items-center gap-2"><Icon name="wand-2" size={18} className="text-craft-yellow" /> AI 智能排版</h3>
+                                    <button onClick={() => setShowAiModal(false)} className="text-gray-400 hover:text-black"><Icon name="x" size={20}/></button>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <p className="text-xs text-gray-500 font-mono">PROMPT (发送给 AI):</p>
+                                            <button onClick={() => copyToClipboard(generatePrompt())} className="text-xs font-bold text-craft-black hover:text-craft-yellow">复制指令</button>
+                                        </div>
+                                        <p className="text-[10px] font-mono text-gray-400 select-all leading-relaxed max-h-20 overflow-y-auto">
+                                            {generatePrompt()}
+                                        </p>
+                                    </div>
+                                    <textarea 
+                                        value={aiJsonInput}
+                                        onChange={(e) => setAiJsonInput(e.target.value)}
+                                        placeholder="在此粘贴 AI 返回的 JSON 代码..." 
+                                        className="w-full h-32 p-4 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:border-craft-black focus:ring-1 focus:ring-craft-black outline-none resize-none"
+                                    ></textarea>
+                                    <button onClick={handleAiArrange} className="w-full py-3 bg-craft-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all">
+                                        应用排版
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -52,6 +52,7 @@
                         'scale-in': 'scaleIn 0.2s ease-out forwards',
                         'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         'slide-up-mobile': 'slideUpMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'slide-down-mobile': 'slideDownMobile 0.3s ease-in forwards',
                         'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
                         'shine': 'shine 3s linear infinite',
                         'pulse-fast': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -78,6 +79,10 @@
                         slideUpMobile: {
                             '0%': { transform: 'translateY(100%)' },
                             '100%': { transform: 'translateY(0)' }
+                        },
+                        slideDownMobile: {
+                            '0%': { transform: 'translateY(0)' },
+                            '100%': { transform: 'translateY(100%)' }
                         },
                         pulseGlow: {
                             '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
@@ -215,6 +220,43 @@
                 theme: { cardBg: 'bg-craft-yellow', cardText: 'text-craft-black' }
             }
         ];
+
+        // --- Hook: Swipe Gestures ---
+        const useSwipe = ({ onSwipeLeft, onSwipeRight, onSwipeDown, onSwipeUp }) => {
+            const touchCoords = useRef(null);
+
+            const onTouchStart = (e) => {
+                touchCoords.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+
+            const onTouchEnd = (e) => {
+                if (!touchCoords.current) return;
+                const endingX = e.changedTouches[0].clientX;
+                const endingY = e.changedTouches[0].clientY;
+                
+                const dx = endingX - touchCoords.current.x;
+                const dy = endingY - touchCoords.current.y;
+                
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+
+                // Threshold for swipe (prevent accidental taps)
+                if (absDx > 30 || absDy > 30) {
+                    if (absDx > absDy) {
+                        // Horizontal
+                        if (dx > 0 && onSwipeRight) onSwipeRight();
+                        else if (dx < 0 && onSwipeLeft) onSwipeLeft();
+                    } else {
+                        // Vertical
+                        if (dy > 0 && onSwipeDown) onSwipeDown();
+                        else if (dy < 0 && onSwipeUp) onSwipeUp();
+                    }
+                }
+                touchCoords.current = null;
+            }
+
+            return { onTouchStart, onTouchEnd };
+        }
 
         // --- Utilities ---
         const usePWA = () => {
@@ -416,6 +458,27 @@
 
             const isEfficiency = activeSeries === SERIES.EFFICIENCY;
 
+            // --- Swipe Handlers ---
+            
+            // 1. Main Stage Navigation (Left/Right)
+            const mainStageSwipe = useSwipe({
+                onSwipeLeft: () => {
+                    // Go Next (Limit to length)
+                    setActiveProductIndex(prev => Math.min(prev + 1, currentProducts.length - 1));
+                },
+                onSwipeRight: () => {
+                    // Go Prev (Limit to 0)
+                    setActiveProductIndex(prev => Math.max(prev - 1, 0));
+                }
+            });
+
+            // 2. Detail Modal Navigation (Down to close)
+            const modalSwipe = useSwipe({
+                onSwipeDown: () => {
+                    handleExitDetail();
+                }
+            });
+
             return (
                 <div className="h-screen w-full relative bg-[#0f0f0f] text-craft-white overflow-hidden flex flex-col font-sans transition-colors duration-1000 select-none">
                     
@@ -471,6 +534,8 @@
                     <main 
                         className={`flex-1 relative flex flex-col items-center justify-center z-10 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${selectedProduct || showSettings || showPWAGuide ? 'scale-90 opacity-20 blur-md grayscale' : 'scale-100 opacity-100'}`}
                         onClick={() => { if(selectedProduct) handleExitDetail(); if(showSettings) setShowSettings(false); }}
+                        onTouchStart={mainStageSwipe.onTouchStart}
+                        onTouchEnd={mainStageSwipe.onTouchEnd}
                     >
                         {currentProducts.map((product, index) => {
                             const isActive = index === activeProductIndex;
@@ -524,7 +589,11 @@
                         <>
                             <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xl transition-opacity duration-500" onClick={handleExitDetail}></div>
                             <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
-                                <div className="pointer-events-auto w-full h-[85vh] md:w-[640px] md:h-auto bg-[#1a1a1a] text-white rounded-t-[32px] md:rounded-[48px] p-6 pb-safe md:p-10 shadow-2xl flex flex-col animate-slide-up-mobile md:animate-scale-in border-t border-x border-white/10 md:border md:border-white/10 relative overflow-hidden safe-pb">
+                                <div 
+                                    onTouchStart={modalSwipe.onTouchStart}
+                                    onTouchEnd={modalSwipe.onTouchEnd}
+                                    className="pointer-events-auto w-full h-[85vh] md:w-[640px] md:h-auto bg-[#1a1a1a] text-white rounded-t-[32px] md:rounded-[48px] p-6 pb-safe md:p-10 shadow-2xl flex flex-col animate-slide-up-mobile md:animate-scale-in border-t border-x border-white/10 md:border md:border-white/10 relative overflow-hidden safe-pb transition-transform duration-200"
+                                >
                                     
                                     {/* Mobile Drag Handle */}
                                     <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6 md:hidden flex-shrink-0 cursor-pointer" onClick={handleExitDetail}></div>
@@ -557,7 +626,10 @@
                                         </div>
 
                                         {/* Content Area (Scrollable) */}
-                                        <div className="flex-1 overflow-y-auto no-scrollbar pr-2 -mr-2">
+                                        <div 
+                                            className="flex-1 overflow-y-auto no-scrollbar pr-2 -mr-2"
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                        >
                                             <p className="text-white/70 text-base md:text-lg leading-relaxed font-normal">{selectedProduct.longDesc}</p>
                                         </div>
 

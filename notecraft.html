@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NoteCraft - 错题工坊 v2.3</title>
+    <title>NoteCraft - 错题工坊 v2.6 (AI Powered)</title>
 
     <!-- PWA -->
     <meta name="theme-color" content="#171717" />
@@ -98,10 +98,22 @@
     </style>
 </head>
 <body>
+    <a
+        href="index.html"
+        class="fixed z-[9999] flex items-center gap-2 px-3 py-2 rounded-full bg-black/60 text-white backdrop-blur-md border border-white/10 shadow-lg hover:bg-black/70 active:scale-95 transition"
+        style="left: calc(env(safe-area-inset-left) + 16px); bottom: calc(env(safe-area-inset-bottom) + 16px);"
+        aria-label="返回 Craft Family 主页"
+    >
+        <span class="text-sm leading-none">⌂</span>
+        <span class="text-xs font-bold">返回主页</span>
+    </a>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useLayoutEffect } = React;
+
+        // --- Configuration Constants ---
+        const DEFAULT_SILICONFLOW_KEY = "sk-kappmrnbawlgggxoaqnpiaaczwhmaqyzmpslslygfzzfsxxv";
 
         // --- 1. 基础组件 ---
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -148,7 +160,7 @@
                                 </div>
                                 <div className="space-y-3 text-left">
                                     <GuideItem icon="upload" title="拖拽上传" desc="支持多图批量处理" />
-                                    <GuideItem icon="grid" title="动态网格" desc="支持 1-5 列自由切换" />
+                                    <GuideItem icon="wand-2" title="AI 智能排版" desc="一键自动识别长图全宽" />
                                     <GuideItem icon="file-down" title="高清导出" desc="PDF 与长图支持" />
                                 </div>
                                 <button onClick={onDismiss} className="w-full py-3.5 bg-craft-black text-white rounded-xl font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 group">
@@ -199,8 +211,15 @@
             const [defaultFilter, setDefaultFilter] = useState('scan'); 
             const [gridColumns, setGridColumns] = useState(2); 
             const [showSettings, setShowSettings] = useState(false);
-            const [showAiModal, setShowAiModal] = useState(false);
-            const [aiJsonInput, setAiJsonInput] = useState('');
+            
+            // AI State
+            const [isAiProcessing, setIsAiProcessing] = useState(false);
+            const [aiConfig, setAiConfig] = useState({
+                provider: 'siliconflow',
+                key: '',
+                baseUrl: 'https://api.siliconflow.cn/v1',
+                model: 'Qwen/Qwen2-7B-Instruct'
+            });
             
             // 导出相关
             const [isExporting, setIsExporting] = useState(false);
@@ -221,14 +240,31 @@
 
             const triggerSuccess = () => confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#facc15', '#000000', '#ffffff'] });
 
-            // 逻辑：图片处理
-            const processFiles = (files) => {
-                const newImgs = Array.from(files).filter(f => f.type.startsWith('image/')).map(f => ({
-                    id: Date.now() + Math.random().toString(36).substr(2, 9),
-                    url: URL.createObjectURL(f),
-                    width: 'half', 
-                    filter: defaultFilter 
-                }));
+            // 逻辑：图片处理 (增加宽高比计算)
+            const processFiles = async (files) => {
+                const newImgs = [];
+                const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+                
+                for (const f of fileList) {
+                    const url = URL.createObjectURL(f);
+                    // 计算 Aspect Ratio
+                    const dimensions = await new Promise(resolve => {
+                        const img = new Image();
+                        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight, ratio: img.naturalWidth / img.naturalHeight });
+                        img.onerror = () => resolve({ w: 0, h: 0, ratio: 1 });
+                        img.src = url;
+                    });
+
+                    newImgs.push({
+                        id: Date.now() + Math.random().toString(36).substr(2, 9),
+                        url: url,
+                        width: 'half', 
+                        filter: defaultFilter,
+                        ratio: dimensions.ratio, // 用于 AI 判断
+                        dimensions: dimensions
+                    });
+                }
+
                 if(newImgs.length) {
                     setImages(prev => [...prev, ...newImgs]);
                     triggerSuccess();
@@ -276,17 +312,103 @@
                 });
             };
 
-            // AI 逻辑
-            const handleAiArrange = () => {
+            // AI Config Update Handler
+            const updateAiConfig = (key, value) => {
+                setAiConfig(prev => {
+                    const next = { ...prev, [key]: value };
+                    // Auto-set defaults based on provider
+                    if (key === 'provider') {
+                        if (value === 'siliconflow') {
+                            next.baseUrl = "https://api.siliconflow.cn/v1";
+                            next.model = "Qwen/Qwen2-7B-Instruct";
+                        } else if (value === 'openai') {
+                            next.baseUrl = "";
+                            next.model = "gpt-3.5-turbo";
+                        } else {
+                            next.baseUrl = "";
+                            next.model = "";
+                        }
+                        next.key = ""; // Reset key on provider change (will fallback to default for siliconflow on use)
+                    }
+                    return next;
+                });
+            };
+
+            // --- AI Logic ---
+
+            const callAiApi = async () => {
+                if (!images.length) return alert("请先上传图片");
+                setIsAiProcessing(true);
+
+                // Construct Data for AI
+                const dataForAi = images.map(img => ({
+                    id: img.id,
+                    aspectRatio: parseFloat(img.ratio.toFixed(2))
+                }));
+
+                const systemPrompt = `You are a professional layout assistant for a notebook app.
+I have a list of images with their IDs and Aspect Ratios (width/height).
+Your task is to assign a "width" property ("full" or "half") to each image based on its shape.
+
+**CRITICAL RULES:**
+1. **Long/Wide Strips**: If an image has an aspect ratio > 1.6 (Wide) OR < 0.4 (Tall/Long Strip), you MUST set "width": "full". This is to ensure readability of long text or questions.
+2. **Standard Images**: For other images (closer to square or 4:3), set "width": "half".
+3. Return ONLY a valid JSON array: [{"id": "...", "width": "full"}, ...]. Do not include markdown formatting like \`\`\`json.`;
+
                 try {
-                    let jsonStr = aiJsonInput.trim();
-                    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '');
+                    let resultJson = "";
+                    let effectiveKey = aiConfig.key;
+
+                    // Fallback to default key for SiliconFlow if user didn't provide one
+                    if (aiConfig.provider === 'siliconflow' && !effectiveKey) {
+                        effectiveKey = DEFAULT_SILICONFLOW_KEY;
+                    }
                     
+                    if (aiConfig.provider === 'siliconflow' || aiConfig.provider === 'openai') {
+                         const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${effectiveKey}`
+                            },
+                            body: JSON.stringify({
+                                model: aiConfig.model,
+                                messages: [
+                                    { role: "system", content: systemPrompt },
+                                    { role: "user", content: JSON.stringify(dataForAi) }
+                                ],
+                                temperature: 0.1
+                            })
+                        });
+                        const data = await response.json();
+                        resultJson = data.choices?.[0]?.message?.content;
+                    } else {
+                        alert("目前仅支持 SiliconFlow 和 OpenAI 模式。");
+                        setIsAiProcessing(false);
+                        return;
+                    }
+
+                    if (resultJson) {
+                         // Clean JSON
+                        const cleanJson = resultJson.replace(/```json/g, '').replace(/```/g, '').trim();
+                        applyAiLayout(cleanJson);
+                    } else {
+                        throw new Error("API 无返回内容");
+                    }
+
+                } catch (e) {
+                    alert("AI 排版失败: " + e.message + "\n请检查网络或 Key 配置。");
+                } finally {
+                    setIsAiProcessing(false);
+                }
+            };
+
+            const applyAiLayout = (jsonStr) => {
+                try {
                     const layoutData = JSON.parse(jsonStr);
-                    if (!Array.isArray(layoutData)) throw new Error("Not Array");
+                    if (!Array.isArray(layoutData)) throw new Error("返回格式错误");
 
                     const layoutMap = new Map(layoutData.map(item => [item.id, item.width]));
-
                     const newImages = images.map(img => {
                         if (layoutMap.has(img.id)) {
                             return { ...img, width: layoutMap.get(img.id) }; 
@@ -295,50 +417,10 @@
                     });
                     
                     setImages(newImages);
-                    setShowAiModal(false);
-                    setAiJsonInput('');
                     triggerSuccess();
-                } catch(e) { 
-                    alert("JSON 格式错误，请确保 AI 返回的是纯 JSON 数组。\n例如: [{\"id\": \"abc\", \"width\": \"full\"}]"); 
+                } catch (e) {
+                    alert("JSON 解析失败: " + e.message);
                 }
-            };
-            
-            const generatePrompt = () => {
-                const data = images.map(img => ({ id: img.id, note: "Analyze image complexity" }));
-                return `Please arrange these images for an A4 paper layout. The current layout grid is ${gridColumns} columns.
-Rules: 
-1. Complex/Wide images -> "width": "full" (Takes entire row). 
-2. Standard images -> "width": "half" (Takes 1/${gridColumns} row width).
-Input: ${JSON.stringify(data)}. 
-Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
-            };
-
-            // 兼容性复制
-            const copyToClipboard = (text) => {
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text)
-                        .then(() => alert("已复制"))
-                        .catch(() => fallbackCopy(text));
-                } else {
-                    fallbackCopy(text);
-                }
-            };
-
-            const fallbackCopy = (text) => {
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-9999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    alert("已复制");
-                } catch (err) {
-                    alert("复制失败，请手动复制");
-                }
-                document.body.removeChild(textArea);
             };
 
             const changeFilter = (id, type) => {
@@ -364,11 +446,11 @@ Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
                     )}
 
                     {/* Loading 层 */}
-                    {isExporting && (
+                    {(isExporting || isAiProcessing) && (
                         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-white/60 backdrop-blur-md">
                             <div className="flex flex-col items-center gap-4 animate-pulse">
                                 <div className="w-12 h-12 border-4 border-gray-200 border-t-craft-black rounded-full animate-spin"></div>
-                                <p className="text-gray-500 font-medium text-sm">Crafting...</p>
+                                <p className="text-gray-500 font-medium text-sm">{isAiProcessing ? 'AI 正在分析图片比例...' : 'Crafting...'}</p>
                             </div>
                         </div>
                     )}
@@ -383,7 +465,8 @@ Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
                                 <h1 className="font-bold text-xl tracking-tight text-craft-black hidden md:block">NoteCraft</h1>
                             </div>
                             <div className="flex items-center gap-3">
-                                <button onClick={() => setShowAiModal(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-transparent hover:border-gray-300">
+                                {/* AI Button (Direct Action) */}
+                                <button onClick={callAiApi} disabled={isAiProcessing} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-craft-black hover:text-white transition-colors font-medium border border-transparent active:scale-95">
                                     <Icon name="wand-2" size={16} /> <span className="hidden sm:inline">AI 排版</span>
                                 </button>
                                 <div className="h-6 w-px bg-gray-200"></div>
@@ -512,12 +595,40 @@ Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
                     {/* Modals: Settings */}
                     {showSettings && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-blur-in" onClick={() => setShowSettings(false)}>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-float" onClick={e => e.stopPropagation()}>
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-float max-h-[85vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
                                     <h3 className="font-bold text-lg">设置</h3>
                                     <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-black"><Icon name="x" size={20}/></button>
                                 </div>
                                 <div className="p-6 space-y-6">
+                                    {/* AI Config Section (New) */}
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">AI 配置 (排版引擎)</label>
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
+                                            <select 
+                                                value={aiConfig.provider} 
+                                                onChange={(e) => updateAiConfig('provider', e.target.value)}
+                                                className="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors"
+                                            >
+                                                <option value="siliconflow">SiliconFlow (Free)</option>
+                                                <option value="openai">Custom OpenAI</option>
+                                            </select>
+                                            <input 
+                                                type="password" 
+                                                value={aiConfig.key}
+                                                onChange={(e) => updateAiConfig('key', e.target.value)}
+                                                className="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors" 
+                                                placeholder={aiConfig.provider === 'siliconflow' ? "Using Default Key (Configurable)" : "sk-..."}
+                                            />
+                                            {aiConfig.provider === 'openai' && (
+                                                <div className="space-y-3 pt-2 border-t border-gray-200">
+                                                     <input value={aiConfig.baseUrl} onChange={(e) => updateAiConfig('baseUrl', e.target.value)} className="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Base URL" />
+                                                     <input value={aiConfig.model} onChange={(e) => updateAiConfig('model', e.target.value)} className="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Model Name" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-3">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">纸张风格</label>
                                         <div className="grid grid-cols-2 gap-3">
@@ -563,38 +674,6 @@ Return ONLY JSON: [{"id": "...", "width": "full/half"}]`;
                                             ))}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Modals: AI */}
-                    {showAiModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 animate-blur-in">
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-float">
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                                    <h3 className="font-bold text-lg flex items-center gap-2"><Icon name="wand-2" size={18} className="text-craft-yellow" /> AI 智能排版</h3>
-                                    <button onClick={() => setShowAiModal(false)} className="text-gray-400 hover:text-black"><Icon name="x" size={20}/></button>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-xs text-gray-500 font-mono">PROMPT (发送给 AI):</p>
-                                            <button onClick={() => copyToClipboard(generatePrompt())} className="text-xs font-bold text-craft-black hover:text-craft-yellow">复制指令</button>
-                                        </div>
-                                        <p className="text-[10px] font-mono text-gray-400 select-all leading-relaxed max-h-20 overflow-y-auto">
-                                            {generatePrompt()}
-                                        </p>
-                                    </div>
-                                    <textarea 
-                                        value={aiJsonInput}
-                                        onChange={(e) => setAiJsonInput(e.target.value)}
-                                        placeholder="在此粘贴 AI 返回的 JSON 代码..." 
-                                        className="w-full h-32 p-4 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:border-craft-black focus:ring-1 focus:ring-craft-black outline-none resize-none"
-                                    ></textarea>
-                                    <button onClick={handleAiArrange} className="w-full py-3 bg-craft-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all">
-                                        应用排版
-                                    </button>
                                 </div>
                             </div>
                         </div>

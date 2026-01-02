@@ -1,6 +1,6 @@
 /* Craft Family PWA Service Worker */
 
-const VERSION = "2026-01-02-4";
+const VERSION = "2026-01-02-5";
 const PRECACHE = `craft-precache-${VERSION}`;
 const RUNTIME = `craft-runtime-${VERSION}`;
 

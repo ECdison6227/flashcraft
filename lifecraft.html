@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LifeCraft - 智能生活工坊</title>
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#171717" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Craft" />
   
   <!-- 核心依赖 -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -775,5 +784,7 @@
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
+
+  <script src="pwa.js"></script>
 </body>
 </html>

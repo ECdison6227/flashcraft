@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MarkCraft - 极简 Markdown 工坊</title>
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#171717" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Craft" />
     
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -709,5 +718,7 @@ Rules:
         editor.value = `# MarkCraft v4.2\n\n欢迎使用 **MarkCraft**，您的高效排版助手。\n\n## 📝 功能更新\n1. **AI 润色升级**：内部 AI 现已锁定为“无损模式”，仅修复格式和公式，不改动您的文字。\n2. **手动模式优化**：增加了醒目的提示，确保您从 AI 复制的是正确的 Markdown 源码。\n\n## 🔧 试一试\n选中下方混乱的公式，右键点击“AI 润色选中”：\n\nE=mc2 和 a2+b2=c2\n\n## 💡 提示\n若遇到极其复杂的公式，请点击右上角的 **设置** -> **启用手动模式**，使用腾讯元宝等强力模型。`;
         setPaper('white'); syncEditor(); updateAiProvider();
     </script>
+
+    <script src="pwa.js"></script>
 </body>
 </html>

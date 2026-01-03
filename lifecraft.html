@@ -618,35 +618,19 @@
 
             // Cloud mode: join by share_code
             if (user?.id) {
-                const { data, error } = await supabase.from(TASKS_TABLE).select('*').eq('share_code', code).maybeSingle();
+                const { data, error } = await supabase.rpc('join_task_by_code', {
+                    code_input: code,
+                    email_input: user?.email || null
+                });
                 if (error || !data) {
-                    showToast("无效的邀请码", "error");
+                    const msg = (error?.message || '').toLowerCase();
+                    if (msg.includes('invalid code')) showToast("无效的邀请码", "error");
+                    else if (msg.includes('not authenticated')) showToast("请先登录", "error");
+                    else showToast(`加入失败：${error?.message || '未知错误'}`, "error");
                     return;
                 }
 
-                const taskFromCloud = rowToTask(data);
-                if (taskFromCloud.kind !== 'multi') {
-                    showToast("该邀请码不是多人协作任务", "error");
-                    return;
-                }
-
-                const myId = user.id;
-                const participants = Array.isArray(taskFromCloud.participants) ? taskFromCloud.participants : [];
-                if (participants.some(p => p?.uid === myId)) {
-                    showToast("你已在该任务中", "error");
-                    setIsJoinModalOpen(false);
-                    return;
-                }
-
-                const nextParticipants = [...participants, { uid: myId, email: user?.email || 'User', status: 'pending' }];
-                const { error: updateError } = await supabase.from(TASKS_TABLE).update({ participants: nextParticipants }).eq('id', taskFromCloud.id);
-                if (updateError) {
-                    console.error('Join task update error:', updateError);
-                    showToast(`加入失败：${updateError.message}`, "error");
-                    return;
-                }
-
-                const updatedTask = { ...taskFromCloud, participants: nextParticipants };
+                const updatedTask = rowToTask(data);
                 setTasks(prev => {
                     const exists = prev.some(t => t.id === updatedTask.id);
                     return exists ? prev.map(t => t.id === updatedTask.id ? updatedTask : t) : [updatedTask, ...prev];

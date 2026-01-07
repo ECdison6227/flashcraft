@@ -1086,12 +1086,23 @@
     const HomeView = ({ decks, actions, showGuide, sortMode, setSortMode, reduceMotion, lang, highlightDeckId, user, dailyStats }) => {
         const sortedDecks = [...decks].sort((a, b) => { if (sortMode === 'count') return b.cards.length - a.cards.length; if (sortMode === 'color') return a.color.localeCompare(b.color); return 0; });
         const t = TRANSLATIONS[lang];
+        const levelColor = (lvl) => {
+            const n = Number(lvl || 1);
+            if (n >= 20) return '#facc15';
+            if (n >= 12) return '#8b5cf6';
+            if (n >= 6) return '#3b82f6';
+            return '#9ca3af';
+        };
         return (
             <div className={`min-h-screen flex flex-col transition-all duration-700 ${showGuide ? 'blur-active pointer-events-none' : 'blur-clearing'}`}>
                 <header className="fixed top-0 w-full h-20 px-6 md:px-10 flex items-center justify-between z-50 glass">
                     <div className="flex items-center gap-3"><div className="w-10 h-10 bg-craft-black rounded-xl flex items-center justify-center shadow-lg group cursor-pointer hover:rotate-3 transition-transform"><span className="font-serif text-2xl font-bold text-white tracking-tighter group-hover:text-craft-yellow transition-colors">F</span></div><h1 className="text-xl font-bold tracking-tight text-craft-black hidden md:block">FlashCraft</h1></div>
                     <div className="flex items-center gap-3">
                         <div className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-full border shadow-sm ${user?.is_pro ? 'bg-craft-yellow/20 border-craft-yellow/30 text-craft-black' : 'bg-white/60 border-gray-200 text-gray-500'}`}>{user?.role === 'admin' && <Icon name="shield" size={14} className="text-craft-black/60" />}<span className="text-[10px] font-mono font-bold tracking-widest">{user?.is_pro ? 'PRO' : 'FREE'}</span></div>
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-full border border-white/50 bg-white/60 shadow-sm">
+                            <span className="text-[10px] font-mono font-bold" style={{ color: levelColor(user?.level) }}>Lv.{user?.level || 1}</span>
+                            <span className="text-[10px] font-mono font-bold text-gray-400">{user?.xp_total ? `${user.xp_total} XP` : ''}</span>
+                        </div>
                         <button onClick={actions.openSettings} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.settings}><Icon name="settings" size={20} /></button>
                         <button onClick={actions.openSharedImport} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.import}><Icon name="download" size={20} /></button>
                         <div className="h-6 w-px bg-gray-200 mx-1"></div>
@@ -1364,6 +1375,7 @@
         const [showProCelebration, setShowProCelebration] = useState(false);
         const [showProWelcome, setShowProWelcome] = useState(false);
         const [toast, setToast] = useState(null);
+        const [checkinSyncState, setCheckinSyncState] = useState({ status: 'idle', error: null });
         
         // --- Daily Stats State ---
         const [dailyStats, setDailyStats] = useState(() => {
@@ -1376,6 +1388,14 @@
             }
             return { date: today, cards: 0, time: 0, checkedIn: false };
         });
+
+        const getLocalISODate = () => {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
 
         const proWelcomeShownForRef = useRef(null);
         const decksRef = useRef(decks);
@@ -1414,6 +1434,34 @@
                         newState.cards = newState.cardIds.length;
                     }
                 }
+
+                // Award XP for study milestones (idempotent per day via craft_award_xp unique key)
+                try {
+                    if (user?.id) {
+                        const iso = getLocalISODate();
+                        const milestones = [
+                            { n: 10, xp: 5, type: 'study_10_unique' },
+                            { n: 20, xp: 5, type: 'study_20_unique' },
+                            { n: 30, xp: 5, type: 'study_30_unique' },
+                        ];
+                        for (const m of milestones) {
+                            if (newState.cards === m.n) {
+                                supabase.rpc('craft_award_xp', { p_event_date: iso, p_source: 'flashcraft', p_event_type: m.type, p_xp: m.xp })
+                                    .then(({ data, error }) => {
+                                        if (error) return;
+                                        if (data?.xp_total != null || data?.level != null) {
+                                            setUser(prevU => prevU ? ({
+                                                ...prevU,
+                                                xp_total: (typeof data.xp_total === 'number' ? data.xp_total : prevU.xp_total),
+                                                level: (typeof data.level === 'number' ? data.level : prevU.level)
+                                            }) : prevU);
+                                        }
+                                    })
+                                    .catch(() => {});
+                            }
+                        }
+                    }
+                } catch (_) {}
 
                 // Check Goals
                 if (!newState.checkedIn && newState.cards >= 30 && newState.time >= 600) {
@@ -1469,13 +1517,49 @@
             const loadProfile = async () => {
                 if (!session?.user) { setUser(null); return; }
                 const baseUser = { id: session.user.id, email: session.user.email };
-                const { data: profile } = await supabase.from('profiles').select('id,email,is_pro,role').eq('id', baseUser.id).maybeSingle();
-                const merged = { ...baseUser, ...(profile || {}), role: profile?.role || 'user', is_pro: !!profile?.is_pro };
+                const { data: profile } = await supabase.from('profiles').select('id,email,is_pro,role,xp_total,level').eq('id', baseUser.id).maybeSingle();
+                const merged = { ...baseUser, ...(profile || {}), role: profile?.role || 'user', is_pro: !!profile?.is_pro, xp_total: profile?.xp_total ?? 0, level: profile?.level ?? 1 };
                 if (!cancelled) setUser(merged);
             };
             loadProfile();
             return () => { cancelled = true; };
         }, [session?.user?.id]);
+
+        // Sync Flashcraft daily check-in (30 cards + 10 mins) to Supabase within minutes.
+        useEffect(() => {
+            const sync = async () => {
+                if (!user?.id) return;
+                if (!dailyStats?.checkedIn) return;
+                const iso = getLocalISODate();
+                const markerKey = `flashcraft_checkin_synced_${iso}`;
+                if (localStorage.getItem(markerKey) === '1') return;
+
+                setCheckinSyncState({ status: 'syncing', error: null });
+                try {
+                    const { data, error } = await supabase.rpc('flashcraft_record_checkin', {
+                        p_checkin_date: iso,
+                        p_cards: Number(dailyStats.cards || 0),
+                        p_seconds: Number(dailyStats.time || 0)
+                    });
+                    if (error) throw error;
+                    localStorage.setItem(markerKey, '1');
+
+                    const xp = data?.xp;
+                    if (xp && typeof xp === 'object') {
+                        setUser(prev => prev ? ({
+                            ...prev,
+                            xp_total: (typeof xp.xp_total === 'number' ? xp.xp_total : prev.xp_total),
+                            level: (typeof xp.level === 'number' ? xp.level : prev.level)
+                        }) : prev);
+                    }
+                    setCheckinSyncState({ status: 'done', error: null });
+                } catch (e) {
+                    console.warn('flashcraft_record_checkin failed:', e);
+                    setCheckinSyncState({ status: 'error', error: e?.message || String(e) });
+                }
+            };
+            sync();
+        }, [user?.id, dailyStats?.checkedIn, dailyStats?.cards, dailyStats?.time]);
 
         useEffect(() => { decksRef.current = decks; }, [decks]);
 

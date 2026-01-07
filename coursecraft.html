@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>CourseCraft - 智能教学管理</title>
+  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            craft: {
+              black: '#1d1d1f', gray: '#f5f5f7', white: '#ffffff',
+              yellow: '#facc15', yellowLight: '#fefce8', border: '#e5e5e5',
+              text: '#1d1d1f', red: '#ff3b30'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter','-apple-system','BlinkMacSystemFont','Segoe UI','Roboto','sans-serif'],
+            mono: ['JetBrains Mono','Menlo','monospace'],
+          },
+          boxShadow: {
+            'float': '0 20px 40px -10px rgba(0,0,0,0.08), 0 10px 20px -10px rgba(0,0,0,0.04)',
+            'float-hover': '0 30px 60px -12px rgba(0,0,0,0.12), 0 18px 36px -18px rgba(0,0,0,0.06)',
+            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)', 'inner-light': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.6)',
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'scale-up': 'scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'float-slow': 'floatSlow 6s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            scaleUp: { '0%': { transform: 'scale(0.95)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+            slideUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+            floatSlow: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+    body { background:#f2f2f7; color:#1d1d1f; -webkit-font-smoothing:antialiased;
+      background-image: radial-gradient(at 0% 0%, rgba(250,204,21,0.08) 0px, transparent 50%),
+                        radial-gradient(at 100% 0%, rgba(59,130,246,0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+    .glass { background:rgba(255,255,255,0.75); backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%); border-bottom:1px solid rgba(255,255,255,0.3); }
+    .card-glass { background:rgba(255,255,255,0.85); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.6); box-shadow:0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02); }
+    .no-scrollbar::-webkit-scrollbar { display:none; }
+    .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+    ::selection { background:#facc15; color:#171717; }
+    input[type=time], input[type=date] { border-radius:8px; padding:4px 8px; background:#f9fafb; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // Supabase Config
+    const SUPABASE_URL = 'https://jkhboywafpdesmdguvts.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpraGJveXdhZnBkZXNtZGd1dnRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNTYyMjYsImV4cCI6MjA4MTYzMjIyNn0.eT1-D9nsBNaWw6jHmpGjF6dGK_EUSnCTjAp3IZlZNx0';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+
+    // Storage bucket for files
+    const STORAGE_BUCKET = 'coursecraft-materials';
+
+    // Utils
+    const getWeekStartDate = (date) => { const d = new Date(date); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.setDate(diff)); };
+    const formatDate = (date) => { const y = date.getFullYear(); const m = String(date.getMonth()+1).padStart(2,'0'); const d = String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; };
+    const addDays = (date, days) => { const r = new Date(date); r.setDate(r.getDate()+days); return r; };
+
+    const Icon = ({ name, size=18, className='' }) => { const ref = useRef(null); useEffect(()=>{ if(window.lucide && ref.current){ ref.current.innerHTML=''; const i=document.createElement('i'); i.setAttribute('data-lucide', name); i.setAttribute('width', size); i.setAttribute('height', size); if(className) i.setAttribute('class', className); ref.current.appendChild(i); window.lucide.createIcons({root:ref.current,nameAttr:'data-lucide'});} },[name,className,size]); return <span ref={ref} className="inline-flex items-center justify-center"/>; };
+
+    const FullScreenLoader = ({ label }) => (
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
+        <div className="flex flex-col items-center gap-6 animate-pulse">
+          <div className="w-16 h-16 rounded-3xl bg-craft-black text-white flex items-center justify-center shadow-float"><span className="font-serif text-3xl font-bold">C</span></div>
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">{label}</div>
+        </div>
+      </div>
+    );
+
+    const ModalWrapper = ({ isOpen, onClose, title, children, maxWidth="max-w-md" }) => {
+      if(!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-md animate-fade-in" onClick={onClose}></div>
+          <div className={`relative w-full ${maxWidth} bg-white/90 backdrop-blur-xl rounded-[32px] shadow-2xl overflow-hidden animate-scale-up border border-white/50 flex flex-col max-h-[90vh]`}>
+            <div className="p-6 border-b border-gray-100/50 flex justify-between items-center bg-white/50 z-10 shrink-0">
+              <h3 className="text-xl font-bold text-craft-black flex items-center gap-2 tracking-tight">{title}</h3>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors text-gray-500"><Icon name="x" size={16}/></button>
+            </div>
+            <div className="overflow-y-auto custom-scrollbar flex-1 bg-[#f9f9fb]/50">{children}</div>
+          </div>
+        </div>
+      );
+    };
+
+    // Login View
+    const LoginView = ({ onLoginSuccess }) => {
+      const [email,setEmail]=useState(''); const [code,setCode]=useState(''); const [step,setStep]=useState('email'); const [loading,setLoading]=useState(false); const [error,setError]=useState(null);
+      const handleSendCode = async ()=>{ if(!email.trim()||!email.includes('@')) return setError('请输入有效的邮箱'); setLoading(true); setError(null); const {error} = await supabase.auth.signInWithOtp({ email: email.trim() }); setLoading(false); if(error) setError(error.message.includes('Rate')?'发送太频繁，请稍后再试':error.message); else setStep('code'); };
+      const handleVerify = async ()=>{ if(!code.trim()) return; setLoading(true); setError(null); const {data,error}=await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' }); setLoading(false); if(error) setError('验证码错误或已过期'); else if(data.session) onLoginSuccess(data.session); };
+      return (
+        <div className="min-h-screen flex items-center justify-center px-6 py-12 animate-fade-in relative overflow-hidden">
+          <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-craft-yellow/20 rounded-full blur-3xl opacity-60 animate-float-slow"></div>
+          <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-400/20 rounded-full blur-3xl opacity-60 animate-float-slow" style={{animationDelay:'2s'}}></div>
+          <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[40px] shadow-float p-10 border border-white/60 relative z-10">
+            <div className="text-center mb-10">
+              <div className="w-20 h-20 bg-craft-black rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl transform -rotate-6 hover:rotate-0 transition-all duration-500"><span className="font-serif text-5xl font-bold text-white">C</span></div>
+              <h2 className="text-3xl font-bold text-craft-black tracking-tight">Welcome Back</h2>
+              <p className="text-sm text-gray-500 mt-3 font-medium">CourseCraft 智能教学管理</p>
+            </div>
+            <div className="space-y-5">
+              {step==='email'? (
+                <>
+                  <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" className="w-full p-4 rounded-2xl bg-gray-50/80 border border-gray-200 focus:border-craft-black focus:bg-white outline-none transition-all font-medium text-craft-black shadow-inner-light" /></div>
+                  <button onClick={handleSendCode} disabled={loading||!email} className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${loading||!email?'bg-gray-200 text-gray-400':'bg-craft-black text-white hover:shadow-xl hover:-translate-y-0.5'}`}>{loading?'发送中...':'获取验证码'} <Icon name="arrow-right" size={18}/></button>
+                </>
+              ) : (
+                <>
+                  <div className="bg-green-50 p-4 rounded-2xl flex items-center gap-3 text-green-700 text-xs font-bold border border-green-100"><div className="bg-white p-1.5 rounded-full shadow-sm"><Icon name="mail" size={14}/></div> 验证码已发送至 {email}</div>
+                  <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Code</label><input type="text" value={code} onChange={e=>setCode(e.target.value)} placeholder="123456" className="w-full p-4 rounded-2xl bg-gray-50/80 border border-gray-200 focus:border-craft-black focus:bg-white outline-none transition-all font-mono text-2xl tracking-[0.5em] text-center font-bold shadow-inner-light" /></div>
+                  <button onClick={handleVerify} disabled={loading||!code} className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${loading||!code?'bg-gray-200 text-gray-400':'bg-craft-black text-white hover:shadow-xl'}`}>{loading?'验证中...':'登录'}</button>
+                  <button onClick={()=>setStep('email')} className="w-full py-2 text-xs text-gray-400 hover:text-black font-bold">返回修改邮箱</button>
+                </>
+              )}
+              {error && <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl flex items-center gap-2 animate-pulse border border-red-100"><Icon name="alert-circle" size={16}/> {error}</div>}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const SettingsModal = ({ isOpen, onClose, role, setRole, user, onLogout }) => (
+      <ModalWrapper isOpen={isOpen} onClose={onClose} title={<><Icon name="settings" className="text-craft-yellow" fill="currentColor"/> 设置</>} maxWidth="max-w-sm">
+        <div className="p-6 space-y-6">
+          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-gray-100 to-gray-200 flex items-center justify-center text-lg font-bold text-gray-600 shadow-inner">{user.email[0].toUpperCase()}</div>
+              <div className="flex-1 overflow-hidden">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">当前账号</div>
+                <div className="text-sm font-bold text-craft-black truncate">{user.email}</div>
+              </div>
+            </div>
+            <button onClick={onLogout} className="w-full py-3 rounded-2xl text-xs font-bold border border-gray-200 hover:border-black hover:bg-craft-black hover:text-white transition-all active:scale-95">退出登录</button>
+          </div>
+          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2 mb-1"><Icon name="users" size={16} className="text-craft-black"/><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">身份切换</span></div>
+            <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+              <button onClick={()=>setRole('student')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${role==='student'?'bg-white shadow-sm text-black ring-1 ring-black/5':'text-gray-400 hover:text-gray-600'}`}>学生</button>
+              <button onClick={()=>setRole('teacher')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${role==='teacher'?'bg-white shadow-sm text-black ring-1 ring-black/5':'text-gray-400 hover:text-gray-600'}`}>教师</button>
+            </div>
+          </div>
+        </div>
+      </ModalWrapper>
+    );
+
+    const AdminReciteTargetModal = ({ isOpen, onClose, current, onSave }) => {
+      const [val, setVal] = useState(current || 4);
+      useEffect(()=>{ if(isOpen) setVal(current || 4); }, [isOpen, current]);
+      if(!isOpen) return null;
+      return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} title="背诵周目标设置" maxWidth="max-w-sm">
+          <div className="p-6 space-y-6">
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">每周需要完成次数 (1-7)</div>
+              <div className="flex items-center gap-4">
+                <input type="range" min="1" max="7" step="1" value={val} onChange={e=>setVal(parseInt(e.target.value,10))} className="flex-1" />
+                <div className="w-12 text-center font-mono font-bold text-craft-black">{val}</div>
+              </div>
+              <button onClick={()=>onSave(val)} className="w-full mt-5 py-3.5 bg-craft-black text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all">保存</button>
+            </div>
+            <div className="text-[10px] text-gray-400 font-medium">
+              仅管理员可见。若未创建 craft_settings 表，将自动使用默认值 4。
+            </div>
+          </div>
+        </ModalWrapper>
+      );
+    };
+
+    const CourseSettingsModal = ({ isOpen, onClose, course, onSave, onDelete, onRegenerateCode, onToggleJoin }) => {
+      const [title, setTitle] = useState('');
+      const [color, setColor] = useState('#facc15');
+      const [joinEnabled, setJoinEnabled] = useState(true);
+
+      const COLORS=['#facc15','#3b82f6','#ef4444','#10b981','#f97316','#8b5cf6','#171717'];
+
+      useEffect(()=>{
+        if(!isOpen) return;
+        setTitle(course?.title || '');
+        setColor(course?.color || '#facc15');
+        setJoinEnabled(course?.join_enabled !== false);
+      }, [isOpen, course?.id]);
+
+      if(!isOpen || !course) return null;
+
+      return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} title="课程设置" maxWidth="max-w-md">
+          <div className="p-6 space-y-6">
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">课程名称</label>
+                <input value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black focus:bg-white outline-none font-bold text-sm transition-all" placeholder="例如：雅思口语 1v1" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">主题色</label>
+                <div className="flex gap-3 flex-wrap">
+                  {COLORS.map(c=>(
+                    <button key={c} onClick={()=>setColor(c)} className={`w-10 h-10 rounded-full shadow-sm transition-all ${color===c?'ring-2 ring-offset-2 ring-gray-400 scale-110':'hover:scale-105 hover:shadow-md'}`} style={{backgroundColor:c}} />
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={()=>onSave({ title: title.trim(), color })}
+                disabled={!title.trim()}
+                className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${title.trim()?'bg-craft-black text-white hover:shadow-xl':'bg-gray-100 text-gray-400'}`}
+              >
+                保存课程信息
+              </button>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">邀请码</span>
+                  <span className="font-mono font-bold text-lg text-craft-black tracking-wider">{course.code}</span>
+                </div>
+                <button
+                  onClick={()=>{ navigator.clipboard?.writeText?.(course.code); }}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold"
+                >
+                  复制
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={onRegenerateCode}
+                  className="flex-1 py-3 rounded-2xl bg-blue-50 text-blue-700 border border-blue-100 font-bold text-xs hover:bg-blue-100 active:scale-95 transition-all"
+                >
+                  重新生成邀请码
+                </button>
+                <button
+                  onClick={()=>{ const next = !joinEnabled; setJoinEnabled(next); onToggleJoin(next); }}
+                  className={`flex-1 py-3 rounded-2xl border font-bold text-xs active:scale-95 transition-all ${joinEnabled ? 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-craft-black text-white border-craft-black hover:bg-gray-900'}`}
+                >
+                  {joinEnabled ? '关闭加入' : '开放加入'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-red-100 shadow-sm space-y-3">
+              <div className="text-xs font-bold text-red-500 uppercase tracking-widest">危险操作</div>
+              <button
+                onClick={onDelete}
+                className="w-full py-3.5 rounded-2xl bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 font-bold active:scale-95 transition-all"
+              >
+                一键删除课程
+              </button>
+            </div>
+          </div>
+        </ModalWrapper>
+      );
+    };
+
+    const CreateCourseModal = ({ isOpen, onClose, onCreate }) => {
+      const [title,setTitle]=useState(''); const [color,setColor]=useState('#facc15'); const [schedules,setSchedules]=useState([{day:'1',start:'10:00',end:'11:30'}]); const [startDate,setStartDate]=useState(formatDate(new Date())); const [endDate,setEndDate]=useState(formatDate(addDays(new Date(),365*3)));
+      const COLORS=['#facc15','#3b82f6','#ef4444','#10b981','#f97316','#8b5cf6','#171717']; const DAYS=[{val:'1',label:'周一'},{val:'2',label:'周二'},{val:'3',label:'周三'},{val:'4',label:'周四'},{val:'5',label:'周五'},{val:'6',label:'周六'},{val:'7',label:'周日'}];
+      useEffect(()=>{ if(isOpen){ setTitle(''); setColor('#facc15'); setSchedules([{day:'1',start:'10:00',end:'11:30'}]); setStartDate(formatDate(new Date())); setEndDate(formatDate(addDays(new Date(),365*3))); } },[isOpen]);
+      const handleSubmit=()=>{ if(!title.trim()) return; onCreate({title,color,start_date:startDate,end_date:endDate}, schedules); onClose(); };
+      return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} title="创建新课程" maxWidth="max-w-lg">
+          <div className="p-6 space-y-6">
+            <div className="space-y-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><Icon name="info" size={14}/> 课程设置</h4>
+              <div className="space-y-2"><label className="text-xs font-bold text-gray-500 ml-1">课程名称</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：AP 宏观经济学" className="w-full p-3.5 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black focus:bg-white outline-none font-bold text-sm transition-all"/></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><label className="text-xs font-bold text-gray-500 ml-1">开课日期</label><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full p-3 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black outline-none font-mono text-sm"/></div>
+                <div className="space-y-2"><label className="text-xs font-bold text-gray-500 ml-1">结课日期</label><input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="w-full p-3 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black outline-none font-mono text-sm"/></div>
+              </div>
+              <div className="space-y-2"><label className="text-xs font-bold text-gray-500 ml-1">主题色</label><div className="flex gap-3 flex-wrap">{COLORS.map(c=>(<button key={c} onClick={()=>setColor(c)} className={`w-10 h-10 rounded-full shadow-sm transition-all ${color===c?'ring-2 ring-offset-2 ring-gray-400 scale-110':'hover:scale-105 hover:shadow-md'}`} style={{backgroundColor:c}}/>))}</div></div>
+            </div>
+            <div className="space-y-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between"><h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><Icon name="clock" size={14}/> 常规上课时间</h4><button onClick={()=>setSchedules([...schedules,{day:'1',start:'10:00',end:'11:30'}])} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"><Icon name="plus" size={12}/> 添加</button></div>
+              <div className="space-y-3">
+                {schedules.map((s,idx)=>(
+                  <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-gray-50 p-3 rounded-2xl border border-gray-200/50">
+                    <select value={s.day} onChange={e=>{const n=[...schedules];n[idx].day=e.target.value;setSchedules(n);}} className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold focus:border-black outline-none w-24 shadow-sm">{DAYS.map(d=><option key={d.val} value={d.val}>{d.label}</option>)}</select>
+                    <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                      <input type="time" value={s.start} onChange={e=>{const n=[...schedules];n[idx].start=e.target.value;setSchedules(n);}} className="bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm font-mono focus:border-black outline-none flex-1 shadow-sm"/>
+                      <span className="text-gray-400 font-bold">-</span>
+                      <input type="time" value={s.end} onChange={e=>{const n=[...schedules];n[idx].end=e.target.value;setSchedules(n);}} className="bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm font-mono focus:border-black outline-none flex-1 shadow-sm"/>
+                    </div>
+                    {schedules.length>1 && (<button onClick={()=>setSchedules(schedules.filter((_,i)=>i!==idx))} className="text-gray-400 hover:text-red-500 p-2 sm:ml-1 transition-colors"><Icon name="trash-2" size={16}/></button>)}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={handleSubmit} disabled={!title.trim()} className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-sm ${title.trim()?'bg-craft-black text-white hover:shadow-xl hover:-translate-y-0.5':'bg-gray-100 text-gray-400'}`}>创建课程</button>
+          </div>
+        </ModalWrapper>
+      );
+    };
+
+    const JoinCourseModal = ({ isOpen, onClose, onJoin }) => {
+      const [code,setCode]=useState('');
+      return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} title="加入课程" maxWidth="max-w-sm">
+          <div className="p-6 space-y-6">
+            <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">课程邀请码</label><input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="MATH88" className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black focus:bg-white outline-none font-mono font-bold tracking-[0.2em] text-center uppercase text-xl shadow-inner-light transition-all"/></div>
+            <button onClick={()=>{ if(code.trim()){ onJoin(code); onClose(); setCode(''); }}} disabled={!code.trim()} className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${code.trim()?'bg-craft-black text-white hover:shadow-xl hover:-translate-y-0.5':'bg-gray-100 text-gray-400'}`}>加入课堂</button>
+          </div>
+        </ModalWrapper>
+      );
+    };
+
+    const EditSessionModal = ({ isOpen, onClose, sessionData, onSave, onCancelSession }) => {
+      const [newDate,setNewDate]=useState(''); const [newStart,setNewStart]=useState(''); const [newEnd,setNewEnd]=useState('');
+      useEffect(()=>{ if(isOpen && sessionData){ setNewDate(sessionData.date); setNewStart(sessionData.start); setNewEnd(sessionData.end); } },[isOpen,sessionData]);
+      if(!sessionData) return null;
+      return (
+        <ModalWrapper isOpen={isOpen} onClose={onClose} title="调整课程" maxWidth="max-w-sm">
+          <div className="p-6 space-y-5">
+            <div className="bg-craft-yellow/10 p-4 rounded-2xl border border-craft-yellow/20 mb-2">
+              <div className="text-sm font-bold text-craft-black mb-1">{sessionData.title}</div>
+              <div className="text-xs text-gray-500 font-mono">原定: {sessionData.date} {sessionData.start}-{sessionData.end}</div>
+            </div>
+            <div className="space-y-2"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">新日期</label><input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono bg-white"/></div>
+            <div className="flex gap-3">
+              <div className="space-y-2 flex-1"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">开始</label><input type="time" value={newStart} onChange={e=>setNewStart(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono bg-white"/></div>
+              <div className="space-y-2 flex-1"><label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">结束</label><input type="time" value={newEnd} onChange={e=>setNewEnd(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono bg-white"/></div>
+            </div>
+            <div className="pt-2 flex flex-col gap-3">
+              <button onClick={()=>onSave({ ...sessionData, new_date:newDate, new_start:newStart, new_end:newEnd })} className="w-full py-3.5 bg-craft-black text-white rounded-2xl font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all">确认调整</button>
+              <button onClick={()=>onCancelSession(sessionData)} className="w-full py-3.5 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 rounded-2xl font-bold active:scale-95 transition-all">取消该节课</button>
+            </div>
+          </div>
+        </ModalWrapper>
+      );
+    };
+
+    const WeeklySchedule = ({ schedules, courses, exceptions, onEditSession, role }) => {
+      const [currentDate,setCurrentDate]=useState(new Date());
+      const weekStart=getWeekStartDate(currentDate); const weekDates=Array.from({length:7},(_,i)=>addDays(weekStart,i)); const todayStr=formatDate(new Date());
+      const getEventsForDay = (date) => {
+        const dateStr=formatDate(date);
+        const curDate=new Date(`${dateStr}T12:00:00`);
+        const dayOfWeek=date.getDay()===0?7:date.getDay();
+        let daily=[];
+
+        // 常规排课
+        schedules.forEach(s=>{
+          const course=courses.find(c=>c.id===s.course_id);
+          if(!course) return;
+          const startDate=new Date(`${course.start_date}T12:00:00`);
+          const endDate=new Date(`${course.end_date}T12:00:00`);
+          if(curDate<startDate || curDate>endDate) return;
+          if(Number(s.day)===dayOfWeek){
+            daily.push({
+              id:`${s.id}_${dateStr}`,
+              original_schedule_id:s.id,
+              course_id:s.course_id,
+              title:course.title,
+              color:course.color,
+              start:s.start,
+              end:s.end_time||s.end,
+              date:dateStr,
+              original_date:dateStr,
+              is_exception:false
+            });
+          }
+        });
+
+        // 调课/补课
+        const modified=exceptions.filter(e=>e.new_date===dateStr && !e.is_cancelled);
+        modified.forEach(m=>{
+          const course=courses.find(c=>c.id===m.course_id);
+          if(course) daily.push({
+            id:`exc_${m.id}`,
+            course_id:m.course_id,
+            title:course.title,
+            color:course.color,
+            start:m.new_start,
+            end:m.new_end_time||m.new_end,
+            date:dateStr,
+            original_date:m.original_date,
+            is_exception:true,
+            is_rescheduled:true
+          });
+        });
+
+        // 取消
+        const removed=exceptions.filter(e=>e.original_date===dateStr);
+        if(removed.length>0) daily = daily.filter(ev=>{
+          const ex=removed.find(r=>r.course_id===ev.course_id);
+          return !ex || ev.is_exception;
+        });
+
+        return daily.sort((a,b)=>a.start.localeCompare(b.start));
+      };
+      return (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between bg-white/60 backdrop-blur-md p-2 rounded-2xl border border-white/60 shadow-sm">
+            <button onClick={()=>setCurrentDate(addDays(currentDate,-7))} className="p-2.5 hover:bg-white rounded-xl transition-all shadow-sm hover:shadow active:scale-90 text-gray-500"><Icon name="chevron-left" size={18}/></button>
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={()=>setCurrentDate(new Date())}>
+              <div className="w-8 h-8 rounded-lg bg-craft-yellow/20 flex items-center justify-center text-craft-black group-hover:bg-craft-yellow group-hover:scale-110 transition-all"><Icon name="calendar" size={16} fill="currentColor"/></div>
+              <span className="text-sm font-bold font-mono tracking-tight text-gray-700">{formatDate(weekStart)} ~ {formatDate(addDays(weekStart,6))}</span>
+              {formatDate(new Date())>=formatDate(weekStart) && formatDate(new Date())<=formatDate(addDays(weekStart,6)) && <span className="text-[10px] bg-craft-black text-white px-2 py-0.5 rounded-full shadow-md animate-pulse">Current</span>}
+            </div>
+            <button onClick={()=>setCurrentDate(addDays(currentDate,7))} className="p-2.5 hover:bg-white rounded-xl transition-all shadow-sm hover:shadow active:scale-90 text-gray-500"><Icon name="chevron-right" size={18}/></button>
+          </div>
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/60 shadow-float overflow-hidden">
+            <div className="overflow-x-auto no-scrollbar">
+              <div className="min-w-[800px] grid grid-cols-7 divide-x divide-gray-100/50">
+                {weekDates.map((date,i)=>{
+                  const dateStr=formatDate(date); const isToday=dateStr===todayStr; const events=getEventsForDay(date); const dayName=['周日','周一','周二','周三','周四','周五','周六'][date.getDay()];
+                  return (
+                    <div key={i} className={`flex flex-col min-h-[320px] transition-colors ${isToday?'bg-gradient-to-b from-yellow-50/50 to-white':'bg-white/40'}`}>
+                      <div className={`text-center py-4 border-b border-gray-100/50 ${isToday?'text-craft-black':'text-gray-400'}`}>
+                        <div className="text-[10px] font-bold uppercase tracking-widest mb-1 opacity-70">{dayName}</div>
+                        <div className={`text-lg font-bold font-mono w-8 h-8 rounded-full flex items-center justify-center mx-auto ${isToday?'bg-craft-black text-white shadow-lg':''}`}>{date.getDate()}</div>
+                      </div>
+                      <div className="flex-1 p-2 space-y-3 relative">
+                        {events.map((ev,idx)=>(
+                          <div key={idx} onClick={()=> role==='teacher' && onEditSession(ev)} className={`p-3 rounded-2xl border text-left relative group cursor-pointer transition-all hover:shadow-float-hover hover:-translate-y-1 animate-slide-up overflow-hidden ${ev.is_exception?'ring-2 ring-blue-400 ring-offset-2':''}`} style={{backgroundColor:ev.color,color:'#171717'}}>
+                            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm"></div>
+                            <div className="relative z-10">
+                              <div className="w-1 h-full absolute left-0 top-0 bg-current opacity-100" style={{backgroundColor:ev.color}}></div>
+                              <div className="pl-2.5 border-l-2" style={{borderColor:ev.color}}>
+                                <div className="text-[10px] font-mono font-bold opacity-60 mb-0.5 flex justify-between tracking-tighter"><span>{ev.start}</span>{ev.is_rescheduled && <Icon name="refresh-cw" size={10} className="text-blue-500"/>}</div>
+                                <div className="font-bold text-xs leading-tight line-clamp-2">{ev.title}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {events.length===0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5"><div className="w-1.5 h-1.5 bg-black rounded-full"></div></div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [session,setSession]=useState(null); const [loading,setLoading]=useState(true);
+      const [role,setRole]=useState('student');
+      const [profile,setProfile]=useState({ level: 1, xp_total: 0, role: 'user' });
+      const [courses,setCourses]=useState([]);
+      const [enrollments,setEnrollments]=useState([]);
+      const [schedules,setSchedules]=useState([]);
+      const [exceptions,setExceptions]=useState([]);
+      const [materials,setMaterials]=useState([]);
+      const [view,setView]=useState('dashboard');
+      const [activeCourseId,setActiveCourseId]=useState(null);
+      const [isSettingsOpen,setIsSettingsOpen]=useState(false);
+      const [isCreateModalOpen,setIsCreateModalOpen]=useState(false);
+      const [isJoinModalOpen,setIsJoinModalOpen]=useState(false);
+      const [isUploadModalOpen,setIsUploadModalOpen]=useState(false);
+      const [editingSession,setEditingSession]=useState(null);
+      const [isCourseSettingsOpen,setIsCourseSettingsOpen]=useState(false);
+      const [memberQuery,setMemberQuery]=useState('');
+      const [isAdminTargetOpen, setIsAdminTargetOpen] = useState(false);
+
+      const [reciteWeeklyTarget, setReciteWeeklyTarget] = useState(4); // default; optionally loaded from DB
+      const [recite,setRecite]=useState({ weekStart: '', weekEnd: '', dates: [], count: 0, todayDone: false, lastSync: null, error: null });
+
+      // auth init
+      useEffect(()=>{ supabase.auth.getSession().then(({data:{session}})=>{ setSession(session); setLoading(false); if(session) fetchAll(session.user.id); }); const { data:{ subscription } } = supabase.auth.onAuthStateChange((_event, session)=>{ setSession(session); if(session) fetchAll(session.user.id); }); return ()=>subscription.unsubscribe(); },[]);
+
+      const currentUserId = session?.user?.id || null;
+
+      const fetchAll = async (uid) => {
+        if(!uid) return;
+        // profile (global level/xp)
+        try {
+          const { data: p } = await supabase.from('profiles').select('level,xp_total,role').eq('id', uid).maybeSingle();
+          if (p) setProfile({ level: p.level || 1, xp_total: p.xp_total || 0, role: p.role || 'user' });
+        } catch (_) {}
+        // courses: own + joined
+        const { data: myCoursesTeacher } = await supabase.from('courses').select('*').eq('teacher_id', uid);
+        const { data: myEnrollSelf } = await supabase.from('enrollments').select('*').eq('student_id', uid);
+        const enrolledIds = (myEnrollSelf||[]).map(e=>e.course_id);
+        const { data: myCoursesStudent } = enrolledIds.length ? await supabase.from('courses').select('*').in('id', enrolledIds) : { data: [] };
+        // Deduplicate in case a user is both teacher + enrolled in same course (or data returns duplicates)
+        const mergedCourses = [...(myCoursesTeacher||[]), ...(myCoursesStudent||[])];
+        const courseById = new Map();
+        for (const c of mergedCourses) {
+          if (c?.id) courseById.set(c.id, c);
+        }
+        const uniqueCourses = Array.from(courseById.values());
+        setCourses(uniqueCourses);
+
+        // enrollments for all merged courses (老师需要管理成员)
+        const courseIds = uniqueCourses.map(c=>c.id);
+        const { data: enrollAll } = courseIds.length ? await supabase.from('enrollments').select('*').in('course_id', courseIds) : { data: [] };
+        setEnrollments(enrollAll || []);
+
+        const { data: sched } = courseIds.length ? await supabase.from('schedules').select('*').in('course_id', courseIds) : { data: [] };
+        setSchedules(sched||[]);
+        const { data: exc } = courseIds.length ? await supabase.from('exceptions').select('*').in('course_id', courseIds) : { data: [] };
+        setExceptions(exc||[]);
+        const { data: mats } = courseIds.length ? await supabase.from('materials').select('*').in('course_id', courseIds).order('created_at', { ascending:false }) : { data: [] };
+        setMaterials(mats||[]);
+      };
+
+      const awardXp = async (eventType, amount) => {
+        try {
+          const iso = formatDate(new Date());
+          const { data, error } = await supabase.rpc('craft_award_xp', {
+            p_event_date: iso,
+            p_source: 'coursecraft',
+            p_event_type: eventType,
+            p_xp: amount
+          });
+          if (error) throw error;
+          if (data?.xp_total != null || data?.level != null) {
+            setProfile(prev => ({
+              ...(prev || { level: 1, xp_total: 0, role: 'user' }),
+              xp_total: (typeof data.xp_total === 'number' ? data.xp_total : (prev?.xp_total || 0)),
+              level: (typeof data.level === 'number' ? data.level : (prev?.level || 1))
+            }));
+          }
+        } catch (_) {}
+      };
+
+      const loadReciteTarget = async () => {
+        try {
+          const { data, error } = await supabase.from('craft_settings').select('value_int').eq('key', 'recite_weekly_target').maybeSingle();
+          if (error) throw error;
+          const v = Number(data?.value_int);
+          if (Number.isFinite(v) && v >= 1 && v <= 7) setReciteWeeklyTarget(v);
+        } catch (_) {}
+      };
+
+      const saveReciteTarget = async (val) => {
+        const v = Number(val);
+        if(!Number.isFinite(v) || v < 1 || v > 7) return;
+        try {
+          const { error } = await supabase.from('craft_settings').upsert({ key: 'recite_weekly_target', value_int: v }, { onConflict: 'key' });
+          if (error) throw error;
+          setReciteWeeklyTarget(v);
+          loadReciteTarget();
+        } catch (e) {
+          alert('保存失败：需要在 Supabase 创建 craft_settings 表并配置 RLS（管理员可写，所有登录可读）。');
+        }
+      };
+
+      const getWeekRangeISO = () => {
+        const now = new Date();
+        const ws = getWeekStartDate(now);
+        const we = addDays(ws, 6);
+        return { weekStart: formatDate(ws), weekEnd: formatDate(we), weekDates: Array.from({ length: 7 }, (_, i) => formatDate(addDays(ws, i))) };
+      };
+
+      const loadRecite = async (uid) => {
+        if(!uid) return;
+        const { weekStart, weekEnd, weekDates } = getWeekRangeISO();
+        try {
+          const { data, error } = await supabase
+            .from('flashcraft_checkins')
+            .select('checkin_date')
+            .eq('user_id', uid)
+            .gte('checkin_date', weekStart)
+            .lte('checkin_date', weekEnd);
+          if(error) throw error;
+          const dates = Array.from(new Set((data||[]).map(r => r.checkin_date))).sort();
+          const today = formatDate(new Date());
+          setRecite({
+            weekStart,
+            weekEnd,
+            dates,
+            count: dates.length,
+            todayDone: dates.includes(today),
+            lastSync: Date.now(),
+            error: null,
+            weekDates
+          });
+        } catch (e) {
+          setRecite(prev => ({ ...(prev||{}), weekStart, weekEnd, weekDates, error: e?.message || String(e), lastSync: Date.now() }));
+        }
+      };
+
+      // Recitation sync: realtime + polling fallback (<5 mins)
+      useEffect(() => {
+        if(!currentUserId) return;
+        loadReciteTarget();
+        loadRecite(currentUserId);
+        const channel = supabase
+          .channel(`flashcraft_checkins_${currentUserId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'flashcraft_checkins', filter: `user_id=eq.${currentUserId}` }, () => {
+            loadRecite(currentUserId);
+          })
+          .subscribe();
+        const timer = setInterval(() => loadRecite(currentUserId), 2 * 60 * 1000);
+        return () => { clearInterval(timer); supabase.removeChannel(channel); };
+      }, [currentUserId]);
+
+      const levelColor = (lvl) => {
+        const n = Number(lvl || 1);
+        if (n >= 20) return '#facc15';
+        if (n >= 12) return '#8b5cf6';
+        if (n >= 6) return '#3b82f6';
+        return '#9ca3af';
+      };
+
+      const handleLogout = async ()=>{ await supabase.auth.signOut(); setSession(null); setCourses([]); setEnrollments([]); };
+
+      const handleCreateCourse = async (courseData, schedData) => {
+        if(!currentUserId) return;
+        const course = { ...courseData, teacher_id: currentUserId, code: Math.random().toString(36).substring(2,8).toUpperCase() };
+        const { data: inserted, error } = await supabase.from('courses').insert(course).select().single();
+        if(error) return alert(error.message);
+        const rows = schedData.map((s)=>({
+          course_id: inserted.id,
+          day: parseInt(s.day),
+          start: s.start,
+          end_time: s.end // 表结构使用 end_time
+        }));
+        if(rows.length) await supabase.from('schedules').insert(rows);
+        confetti({particleCount:100, spread:70, origin:{y:0.6}});
+        awardXp('create_course', 10);
+        fetchAll(currentUserId);
+      };
+
+      const handleJoinCourse = async (code) => {
+        if(!currentUserId) return;
+        const { data: course, error } = await supabase.from('courses').select('*').eq('code', code).single();
+        if(error || !course) return alert('邀请码无效');
+        if(course.join_enabled === false) return alert('该课程已关闭加入');
+        const rowWithTime = { course_id: course.id, student_id: currentUserId, student_email: session.user.email, created_at: new Date().toISOString() };
+        let { error: insErr } = await supabase.from('enrollments').insert(rowWithTime);
+        // 如果 enrollments 表没 created_at 字段，降级重试
+        if(insErr && String(insErr.message || '').toLowerCase().includes('created_at')) {
+          ({ error: insErr } = await supabase.from('enrollments').insert({ course_id: course.id, student_id: currentUserId, student_email: session.user.email }));
+        }
+        if(insErr && !String(insErr.message||'').toLowerCase().includes('duplicate') && insErr.code !== '23505') return alert(insErr.message);
+        confetti({particleCount:100, spread:70, origin:{y:0.6}});
+        awardXp('join_course', 5);
+        fetchAll(currentUserId);
+      };
+
+      const handleSaveSessionEdit = async (data) => {
+        const exc = {
+          course_id: data.course_id,
+          original_date: data.original_date,
+          new_date: data.new_date,
+          new_start: data.new_start,
+          new_end_time: data.new_end, // 列名 new_end_time
+          is_cancelled: false
+        };
+        await supabase.from('exceptions').insert(exc);
+        setEditingSession(null); fetchAll(currentUserId);
+      };
+
+      const handleCancelSession = async (data) => {
+        if(!confirm('取消?')) return;
+        const exc = { course_id: data.course_id, original_date: data.original_date, is_cancelled: true };
+        await supabase.from('exceptions').insert(exc);
+        setEditingSession(null); fetchAll(currentUserId);
+      };
+
+      const handleRemoveStudent = async (enrollment) => {
+        if(!enrollment) return;
+        if(!confirm('移除该学生?')) return;
+        await supabase.from('enrollments').delete().eq('course_id', enrollment.course_id).eq('student_id', enrollment.student_id);
+        if(enrollment.course_id === activeCourseId) {
+          // refresh
+          fetchAll(currentUserId);
+        }
+      };
+
+      const handleLeaveCourse = async () => {
+        if(!activeCourseId || !currentUserId) return;
+        if(!confirm('确定退出该课程？')) return;
+        const { error } = await supabase.from('enrollments').delete().eq('course_id', activeCourseId).eq('student_id', currentUserId);
+        if(error) return alert(error.message);
+        setActiveCourseId(null);
+        setView('dashboard');
+        fetchAll(currentUserId);
+      };
+
+      const handleSaveCourseSettings = async (updates) => {
+        if(!activeCourseId) return;
+        const { error } = await supabase.from('courses').update(updates).eq('id', activeCourseId);
+        if(error) return alert(error.message);
+        fetchAll(currentUserId);
+      };
+
+      const handleRegenerateCode = async () => {
+        if(!activeCourseId) return;
+        const newCode = Math.random().toString(36).substring(2,8).toUpperCase();
+        const { error } = await supabase.from('courses').update({ code: newCode }).eq('id', activeCourseId);
+        if(error) return alert(error.message);
+        fetchAll(currentUserId);
+      };
+
+      const handleToggleJoin = async (enabled) => {
+        if(!activeCourseId) return;
+        const { error } = await supabase.from('courses').update({ join_enabled: enabled }).eq('id', activeCourseId);
+        if(error) {
+          alert('需要在 courses 表添加 join_enabled 列并放行教师 update 权限后才能使用「关闭/开放加入」。');
+          return;
+        }
+        fetchAll(currentUserId);
+      };
+
+      const handleUpload = async (type, payload) => {
+        if(!activeCourseId) return;
+        let materialRow = { course_id: activeCourseId, type, created_at: new Date().toISOString() };
+        if(type === 'text') {
+          materialRow = { ...materialRow, content: payload.content };
+        } else if(type === 'file') {
+          const file = payload.file;
+          if(!file) return;
+          if(file.size > 10*1024*1024) { alert('文件需小于10MB'); return; }
+          const path = `${activeCourseId}/${Date.now()}_${file.name}`;
+          const { error: uploadErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: false });
+          if(uploadErr) { alert(uploadErr.message); return; }
+          const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+          materialRow = { ...materialRow, title: file.name, size: (file.size/1024/1024).toFixed(1), file_path: path, file_url: pub.publicUrl, expires_at: new Date(Date.now()+864000000).toISOString(), content: '' };
+        }
+        await supabase.from('materials').insert(materialRow);
+        setIsUploadModalOpen(false);
+        if(role === 'teacher') awardXp('post_material', 5);
+        fetchAll(currentUserId);
+      };
+
+      const enrollmentsForMe = useMemo(()=> enrollments.filter(e=>e.student_id===currentUserId), [enrollments, currentUserId]);
+
+      const myCourses = useMemo(()=>{
+        if(role==='teacher') return courses.filter(c=>c.teacher_id===currentUserId);
+        const enrolledIds = enrollmentsForMe.map(e=>e.course_id);
+        return courses.filter(c=>enrolledIds.includes(c.id));
+      }, [courses, enrollmentsForMe, role, currentUserId]);
+      const mySchedules = useMemo(()=>{ const ids=myCourses.map(c=>c.id); return schedules.filter(s=>ids.includes(s.course_id)); }, [myCourses, schedules]);
+      const myExceptions = useMemo(()=>{ const ids=myCourses.map(c=>c.id); return exceptions.filter(e=>ids.includes(e.course_id)); }, [myCourses, exceptions]);
+
+      if(loading) return <FullScreenLoader label="LOADING"/>;
+      if(!session) return <LoginView onLoginSuccess={(s)=>{ setSession(s); fetchAll(s.user.id); }}/>
+
+      const activeCourse = courses.find(c=>c.id===activeCourseId);
+      const activeMaterials = materials.filter(m=>m.course_id===activeCourseId).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+      const handleDeleteCourse = async () => {
+        if(!activeCourse || activeCourse.teacher_id !== currentUserId) return;
+        if(!confirm('确定删除该课程及其排课、资料？')) return;
+        await supabase.from('courses').delete().eq('id', activeCourse.id);
+        setActiveCourseId(null); setView('dashboard'); fetchAll(currentUserId);
+      };
+
+      return (
+        <div className="min-h-screen pb-20 text-craft-text animate-fade-in">
+          <header className="fixed top-0 w-full h-20 px-6 md:px-10 flex items-center justify-between z-50 glass transition-all duration-500">
+            <div className="flex items-center gap-4">
+              {view==='course' && (<button onClick={()=>setView('dashboard')} className="p-2.5 -ml-2 rounded-full hover:bg-white transition-all shadow-sm hover:shadow active:scale-90 text-gray-500"><Icon name="chevron-left"/></button>)}
+              <div className="w-10 h-10 bg-craft-black rounded-2xl flex items-center justify-center text-white font-serif font-bold text-xl shadow-lg hover:rotate-6 transition-transform cursor-default">C</div>
+              <span className="font-bold hidden md:block text-craft-black tracking-tight">CourseCraft</span>
+            </div>
+            <button onClick={()=>setIsSettingsOpen(true)} className="flex items-center gap-2.5 p-1.5 pr-4 bg-white/80 border border-white/50 rounded-full hover:bg-white hover:border-white hover:shadow-float transition-all group backdrop-blur-md">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-inner border border-white/50" style={{ backgroundColor: levelColor(profile.level) }}>
+                {session.user.email[0].toUpperCase()}
+              </div>
+              <span className="text-xs font-bold group-hover:text-black transition-colors" style={{ color: levelColor(profile.level) }}>
+                Lv.{profile.level || 1}
+              </span>
+              <span className="text-xs font-bold text-gray-500 group-hover:text-black transition-colors">{role==='teacher'?'教师':'学生'}</span>
+              <Icon name="settings" size={14} className="text-gray-400 group-hover:text-black transition-colors"/>
+            </button>
+          </header>
+
+          <main className="pt-32 px-6 md:px-10 max-w-6xl mx-auto">
+            {view==='dashboard' ? (
+              <div className="space-y-12 animate-slide-up">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                  <div><h1 className="text-4xl font-extrabold text-craft-black tracking-tight">{role==='teacher'?'教学工作台':'我的课程'}</h1><p className="text-gray-500 mt-2 text-sm font-medium tracking-wide opacity-80">{role==='teacher'?'管理您的排期与课程':'查看今日任务与进度'}</p></div>
+                  <button onClick={()=> role==='teacher'? setIsCreateModalOpen(true): setIsJoinModalOpen(true)} className="bg-craft-black text-white px-7 py-4 rounded-[20px] font-bold shadow-float hover:shadow-float-hover hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3"><Icon name={role==='teacher'? 'plus':'log-in'} size={20}/> {role==='teacher'?'创建新课程':'加入课程'}</button>
+                </div>
+
+                {role==='student' && (
+                  <section className="card-glass rounded-[36px] p-8 overflow-hidden relative">
+                    <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full opacity-10" style={{ backgroundColor: levelColor(profile.level) }}></div>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                          <Icon name="repeat" size={14}/> 本周背诵 (来自 Flashcraft 打卡)
+                        </div>
+                        <div className="flex items-baseline gap-3">
+                          <div className="text-3xl font-black text-craft-black">{recite.count || 0}<span className="text-gray-300 font-black">/{reciteWeeklyTarget}</span></div>
+                          <div className="text-xs font-mono text-gray-400">{recite.weekStart} ~ {recite.weekEnd}</div>
+                        </div>
+                        <div className="text-xs text-gray-500 font-bold">
+                          {(recite.count || 0) >= reciteWeeklyTarget
+                            ? '本周已达标 🎉'
+                            : (recite.todayDone ? '今日已计入 1 次 ✅' : '未解锁：请先在 Flashcraft 完成今日打卡（30卡 + 10分钟）')}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-mono">
+                          {recite.lastSync ? `Last sync: ${new Date(recite.lastSync).toLocaleTimeString()}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {!recite.todayDone && (
+                          <a href="flashcraft2.0.html" className="px-6 py-3 rounded-[20px] bg-craft-black text-white font-bold shadow-sm hover:shadow-md active:scale-95 transition-all">
+                            去 Flashcraft 打卡
+                          </a>
+                        )}
+                        {recite.error && (
+                          <div className="text-xs text-red-500 font-bold bg-red-50 border border-red-100 px-4 py-3 rounded-2xl">
+                            同步异常：{recite.error}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="relative z-10 mt-6 flex gap-2">
+                      {(recite.weekDates || []).map((d)=> {
+                        const done = (recite.dates || []).includes(d);
+                        return (
+                          <div key={d} title={d} className={`h-2.5 flex-1 rounded-full ${done ? 'bg-craft-black' : 'bg-gray-200'}`}></div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {role==='teacher' && (
+                  <section>
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em] flex items-center gap-2"><Icon name="calendar" size={14}/> 我的课表 (仅教师可见)</h2>
+                      <span className="text-[10px] text-gray-500 bg-white/60 backdrop-blur px-3 py-1 rounded-full border border-white/50">💡 点击卡片可调课</span>
+                    </div>
+                    <WeeklySchedule schedules={mySchedules} courses={myCourses} exceptions={myExceptions} role={role} onEditSession={setEditingSession}/>
+                  </section>
+                )}
+
+                <section>
+                  <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-6 flex items-center gap-2"><Icon name="grid" size={14}/> 课程概览</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {myCourses.map(course=>(
+                      <div key={course.id} onClick={()=>{ setActiveCourseId(course.id); setView('course'); }} className="group card-glass rounded-[36px] p-8 transition-all hover:shadow-float-hover hover:-translate-y-2 cursor-pointer relative overflow-hidden h-64 flex flex-col justify-between">
+                        <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-gradient-to-br from-transparent to-current opacity-5 rounded-full pointer-events-none group-hover:scale-110 transition-transform duration-700" style={{color: course.color}}></div>
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 rounded-3xl flex items-center justify-center text-3xl font-bold mb-6 shadow-lg transition-transform group-hover:scale-110 group-hover:rotate-6 bg-white text-craft-black">{course.title[0]}</div>
+                          <h3 className="text-2xl font-bold text-craft-black mb-1 tracking-tight group-hover:text-black/80">{course.title}</h3>
+                          <span className="text-[10px] font-mono font-bold text-gray-400 bg-white/80 px-2 py-1 rounded-lg border border-white">CODE: {course.code}</span>
+                        </div>
+                        <div className="flex items-center justify-end"><div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-gray-400 group-hover:bg-craft-black group-hover:text-white transition-all shadow-sm"><Icon name="arrow-right" size={20}/></div></div>
+                      </div>
+                    ))}
+                    {myCourses.length===0 && (<div onClick={()=> role==='teacher'? setIsCreateModalOpen(true): setIsJoinModalOpen(true)} className="border-2 border-dashed border-gray-300/50 rounded-[36px] flex flex-col items-center justify-center h-64 text-gray-400 cursor-pointer hover:border-craft-yellow hover:text-craft-yellow transition-all gap-4 bg-white/20 hover:bg-white/40"><Icon name="plus-circle" size={48} className="opacity-50"/><span className="font-bold text-sm tracking-widest uppercase opacity-70">添加第一门课程</span></div>)}
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="animate-slide-up max-w-4xl mx-auto pb-20">
+                {activeCourse && (
+                  <>
+                    <div className="bg-craft-black text-white p-10 rounded-[48px] shadow-2xl relative overflow-hidden mb-12 group">
+                      <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-8">
+                        <div>
+                          <div className="flex items-center gap-3 mb-4 opacity-60">
+                            <span className="text-[10px] font-mono font-bold border border-white/20 px-3 py-1 rounded-full uppercase tracking-wider">CODE: {activeCourse.code}</span>
+                            {role==='teacher' && <span className="text-xs font-bold">{enrollments.filter(e=>e.course_id===activeCourse.id).length} 学生</span>}
+                          </div>
+                          <h1 className="text-5xl font-extrabold tracking-tighter">{activeCourse.title}</h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {role==='teacher' && (
+                            <>
+                              <button onClick={()=>setIsCourseSettingsOpen(true)} className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center" title="课程设置">
+                                <Icon name="settings-2" size={20} className="text-white"/>
+                              </button>
+                              <button onClick={()=>setIsUploadModalOpen(true)} className="bg-craft-yellow text-craft-black px-8 py-4 rounded-[20px] font-bold flex items-center gap-3 hover:bg-white transition-all shadow-lg active:scale-95 shadow-yellow-900/20"><Icon name="upload-cloud" size={22}/> 发布资料</button>
+                              <button onClick={handleDeleteCourse} className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center justify-center" title="删除课程">
+                                <Icon name="trash-2" size={20} className="text-white"/>
+                              </button>
+                            </>
+                          )}
+                          {role!=='teacher' && (
+                            <button onClick={handleLeaveCourse} className="bg-white/10 text-white px-6 py-3 rounded-[20px] font-bold hover:bg-white/20 active:scale-95 transition-all">
+                              退出课程
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all duration-1000"></div>
+                    </div>
+
+                    {role==='teacher' && (
+                      <div className="space-y-3 card-glass rounded-[28px] p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-gray-500 text-sm font-bold"><Icon name="users" size={16}/> 学生管理</div>
+                          <div className="text-xs text-gray-400 font-mono">共 {enrollments.filter(e=>e.course_id===activeCourse.id).length} 人</div>
+                        </div>
+                        <div className="bg-white/70 border border-white rounded-2xl p-3">
+                          <div className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-2">
+                            <Icon name="search" size={14}/> 搜索
+                          </div>
+                          <input value={memberQuery} onChange={e=>setMemberQuery(e.target.value)} placeholder="按邮箱/ID 搜索成员" className="w-full p-3 rounded-2xl bg-gray-50 border border-gray-200 focus:border-craft-black focus:bg-white outline-none font-medium text-sm transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          {enrollments
+                            .filter(e=>e.course_id===activeCourse.id)
+                            .filter(en=>{
+                              const q=(memberQuery||'').trim().toLowerCase();
+                              if(!q) return true;
+                              return String(en.student_email||'').toLowerCase().includes(q) || String(en.student_id||'').toLowerCase().includes(q);
+                            })
+                            .map((en)=>(
+                            <div key={`${en.course_id}_${en.student_id}`} className="flex items-center justify-between bg-white/70 border border-white rounded-2xl px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600">{(en.student_email||en.student_id||'?')[0].toUpperCase()}</div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-craft-black">{en.student_email || en.student_id}</span>
+                                  <span className="text-[10px] text-gray-400 font-mono">
+                                    ID: {en.student_id}
+                                    {' • '}
+                                    加入：{en.created_at ? new Date(en.created_at).toLocaleString() : (en.joined_at ? new Date(en.joined_at).toLocaleString() : '—')}
+                                  </span>
+                                </div>
+                              </div>
+                              <button onClick={()=>handleRemoveStudent(en)} className="text-xs font-bold text-red-500 px-3 py-1 rounded-full hover:bg-red-50">移除</button>
+                            </div>
+                          ))}
+                          {enrollments.filter(e=>e.course_id===activeCourse.id).length===0 && <div className="text-center text-gray-400 text-sm py-4">暂无学生</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between px-2"><h3 className="text-sm font-bold text-gray-400 uppercase tracking-[0.15em] flex items-center gap-2"><Icon name="layers" size={16}/> 资料流</h3><span className="text-[10px] font-bold text-gray-400 bg-white/60 px-3 py-1 rounded-full border border-white/50 shadow-sm">文件 10 天 · 文字永久</span></div>
+                      {activeMaterials.map(m=>{
+                        const expiresAt = m.expires_at ? new Date(m.expires_at) : null;
+                        const isExpired = !!(expiresAt && expiresAt.getTime() <= Date.now());
+                        const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / 86400000) : null;
+                        const fileAvailable = !!m.file_url;
+
+                        const effectiveType = m.type;
+                        const linkUrl = effectiveType === 'link' ? String(m.content || '').trim() : '';
+                        const linkHost = (() => { try { return linkUrl ? new URL(linkUrl).host : ''; } catch { return ''; } })();
+
+                        return (
+                          <div key={m.id} className={`card-glass p-6 rounded-[28px] transition-all flex gap-6 group items-start ${isExpired ? 'opacity-60 grayscale' : 'hover:shadow-float-hover'}`}>
+                            <div className={`w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center ${
+                              effectiveType==='text' ? 'bg-gray-100 text-gray-500' :
+                              effectiveType==='file' ? 'bg-blue-50 text-blue-600' :
+                              'bg-gray-100 text-gray-600'
+                            } shadow-inner`}>
+                              <Icon
+                                name={
+                                  effectiveType==='text' ? 'align-left' :
+                                  effectiveType==='file' ? 'file-text' :
+                                  'link-2'
+                                }
+                                size={26}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="text-[10px] font-mono font-bold text-gray-400 uppercase">{new Date(m.created_at).toLocaleDateString()}</div>
+                                {effectiveType==='file' && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-500">FILE</div>
+                                    {expiresAt && (
+                                      <div className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${isExpired ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-green-50 text-green-700 border-green-100'}`}>
+                                        {isExpired ? '已过期' : `剩余 ${Math.max(daysLeft, 0)} 天`}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {effectiveType==='link' && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-500">LINK</div>
+                                    {linkHost && <div className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/70 border border-white text-gray-500">{linkHost}</div>}
+                                  </div>
+                                )}
+                              </div>
+                              {effectiveType==='text' ? (
+                                <p className="text-sm font-medium leading-relaxed text-gray-700 whitespace-pre-wrap">{m.content}</p>
+                              ) : effectiveType==='file' ? (
+                                <div>
+                                  {(isExpired || !fileAvailable) ? (
+                                    <div className="font-bold text-lg text-gray-500 cursor-not-allowed">{m.title || '已过期文件'}</div>
+                                  ) : (
+                                    <a href={m.file_url} target="_blank" rel="noreferrer" className="font-bold text-lg text-craft-black mb-1 group-hover:text-blue-600 transition-colors underline decoration-dotted">{m.title}</a>
+                                  )}
+                                  <div className="text-xs text-gray-400 font-bold">{m.size ? `${m.size} MB` : ''}</div>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div className="font-bold text-lg text-craft-black leading-tight truncate">{m.title || linkUrl || '链接'}</div>
+                                  {linkUrl ? (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <a href={linkUrl} target="_blank" rel="noreferrer" className="text-xs text-gray-500 font-mono truncate underline decoration-dotted underline-offset-4 hover:text-blue-600">
+                                        {linkUrl}
+                                      </a>
+                                      <a href={linkUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold shrink-0">
+                                        打开
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-400">（无链接内容）</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {activeMaterials.length===0 && <div className="text-center py-24 card-glass rounded-[36px] text-gray-300 font-bold text-sm tracking-widest uppercase">这里空空如也</div>}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </main>
+
+          <SettingsModal isOpen={isSettingsOpen} onClose={()=>setIsSettingsOpen(false)} role={role} setRole={setRole} user={session.user} onLogout={handleLogout}/>
+          {profile.role === 'admin' && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70]">
+              <button onClick={()=>setIsAdminTargetOpen(true)} className="px-5 py-3 rounded-full bg-white/80 backdrop-blur border border-white/50 shadow-float text-xs font-bold text-gray-600 hover:text-black hover:bg-white transition-all">
+                管理员：背诵周目标
+              </button>
+            </div>
+          )}
+          <AdminReciteTargetModal isOpen={isAdminTargetOpen} onClose={()=>setIsAdminTargetOpen(false)} current={reciteWeeklyTarget} onSave={(v)=>{ saveReciteTarget(v); setIsAdminTargetOpen(false); }} />
+          <CourseSettingsModal
+            isOpen={isCourseSettingsOpen}
+            onClose={()=>setIsCourseSettingsOpen(false)}
+            course={activeCourse}
+            onSave={handleSaveCourseSettings}
+            onDelete={handleDeleteCourse}
+            onRegenerateCode={handleRegenerateCode}
+            onToggleJoin={handleToggleJoin}
+          />
+          <CreateCourseModal isOpen={isCreateModalOpen} onClose={()=>setIsCreateModalOpen(false)} onCreate={handleCreateCourse}/>
+          <JoinCourseModal isOpen={isJoinModalOpen} onClose={()=>setIsJoinModalOpen(false)} onJoin={handleJoinCourse}/>
+          <EditSessionModal isOpen={!!editingSession} onClose={()=>setEditingSession(null)} sessionData={editingSession} onSave={handleSaveSessionEdit} onCancelSession={handleCancelSession}/>
+          <ModalWrapper isOpen={isUploadModalOpen} onClose={()=>setIsUploadModalOpen(false)} title="发布资料" maxWidth="max-w-md">
+            <div className="p-6 space-y-4">
+              <button onClick={()=>{ const c=prompt('请输入内容'); if(c) handleUpload('text',{content:c}); }} className="w-full p-5 rounded-3xl border border-gray-200 hover:border-craft-black flex items-center gap-5 group transition-all hover:bg-gray-50">
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center group-hover:bg-craft-black group-hover:text-white transition-colors shadow-sm"><Icon name="align-left" size={20}/></div>
+                <div className="text-left"><div className="font-bold text-base">文字通知</div><div className="text-xs text-gray-400 mt-0.5">作业要求、课程总结</div></div>
+              </button>
+              <div className="relative w-full p-5 rounded-3xl border border-gray-200 hover:border-craft-black flex items-center gap-5 group transition-all hover:bg-gray-50 overflow-hidden">
+                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={e=>{ const f=e.target.files[0]; if(f) handleUpload('file',{file:f}); }}/>
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center group-hover:bg-craft-black group-hover:text-white transition-colors shadow-sm"><Icon name="file-up" size={20}/></div>
+                <div className="text-left"><div className="font-bold text-base">上传文件</div><div className="text-xs text-gray-400 mt-0.5">10天有效期 · 最大10MB</div></div>
+              </div>
+            </div>
+          </ModalWrapper>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

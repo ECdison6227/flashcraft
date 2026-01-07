@@ -316,18 +316,36 @@
         if (!target) return;
         if (!speechEnabled) return;
         e.stopPropagation();
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-        const phoneticStrip = /(\/[\^\s\/]{1,20}\/|\[[^\s\[\]]{1,20}\])/g;
+        e.preventDefault(); // 防止翻面
+
+        // 文本提取
+        const phoneticStrip = /(\/[^\s\/]{1,20}\/|\[[^\s\[\]]{1,20}\])/g;
         const latexStrip = /\$[^$]*\$/g;
         const markdownStrip = /[`*_]/g;
-        const plain = (content || '').replace(phoneticStrip, '').replace(latexStrip, '').replace(markdownStrip, '').replace(/\\s+/g, ' ').trim();
-        const speakText = plain || target.textContent.replace(/[\\/\\[\\]]/g, '');
+        const rawContent = (content || '').replace(phoneticStrip, '').replace(latexStrip, '').replace(markdownStrip, '').replace(/\s+/g, ' ').trim();
+        let speakText = target.textContent.replace(/[\\/\[\]]/g, '').trim();
+        if (!speakText) speakText = rawContent;
         if (!speakText) return;
-        const utterance = new SpeechSynthesisUtterance(speakText);
-        const voices = window.speechSynthesis?.getVoices?.() || [];
-        const enVoice = voices.find(v => (v.lang || '').toLowerCase().startsWith('en'));
-        if (enVoice) utterance.voice = enVoice;
-        try { window.speechSynthesis.speak(utterance); } catch (_) {}
+
+        // 方案 A：有道 TTS MP3，移动端更稳
+        const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(speakText)}&type=2`;
+        const audio = new Audio(audioUrl);
+        const playPromise = audio.play();
+
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // 方案 B：原生发音降级
+            try { window.speechSynthesis.cancel(); } catch (_) {}
+            const utterance = new SpeechSynthesisUtterance(speakText);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            const voices = window.speechSynthesis?.getVoices?.() || [];
+            const bestVoice = voices.find(v => v.name.includes('Google US') || v.name.includes('Samantha')) ||
+                              voices.find(v => (v.lang || '').toLowerCase() === 'en-us');
+            if (bestVoice) utterance.voice = bestVoice;
+            try { window.speechSynthesis.speak(utterance); } catch (_) {}
+          });
+        }
       };
 
       useEffect(() => {

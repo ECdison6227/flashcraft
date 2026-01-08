@@ -444,15 +444,15 @@
                 <div>
                     <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">自动模式 API 配置</label>
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-                        <select id="api-provider" class="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors" onchange="updateAiProvider()">
-                            <option value="gemini">Google Gemini</option>
-                            <option value="siliconflow" selected>SiliconFlow (Free)</option>
-                            <option value="openai">Custom OpenAI</option>
-                        </select>
-                        <input id="api-key" type="password" class="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors" placeholder="API Key">
-                        <div id="openai-settings" class="hidden space-y-3 pt-2 border-t border-gray-200">
-                             <input id="base-url" class="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Base URL">
-                             <input id="model-name" class="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Model Name">
+	                        <select id="api-provider" class="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors" onchange="updateAiProvider()">
+	                            <option value="gemini" selected>Google Gemini (默认，走代理)</option>
+	                            <option value="siliconflow">SiliconFlow</option>
+	                            <option value="openai">Custom OpenAI</option>
+	                        </select>
+	                        <input id="api-key" type="password" class="w-full p-2 rounded-lg border border-gray-200 bg-white text-xs font-mono outline-none shadow-sm focus:border-craft-black transition-colors" placeholder="API Key">
+	                        <div id="openai-settings" class="hidden space-y-3 pt-2 border-t border-gray-200">
+	                             <input id="base-url" class="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Base URL">
+	                             <input id="model-name" class="w-full p-2 rounded-lg bg-white text-xs font-mono shadow-sm border border-gray-200" placeholder="Model Name">
                         </div>
                     </div>
                 </div>
@@ -476,10 +476,36 @@
         </div>
     </dialog>
 
-    <script>
-        const apiKey = ""; 
-        const DEFAULT_SILICONFLOW_KEY = "sk-kappmrnbawlgggxoaqnpiaaczwhmaqyzmpslslygfzzfsxxv";
-        lucide.createIcons();
+	    <script>
+	        const STORAGE_KEY_OPENAI = "markcraft.openai_api_key";
+	        function safeStorageGet(key) { try { return (localStorage.getItem(key) || "").trim(); } catch { return ""; } }
+	        function safeStorageSet(key, value) { try { localStorage.setItem(key, String(value || "")); } catch {} }
+
+	        // For Gemini we default to a proxy endpoint so the API key does NOT live in browser JS.
+	        // Start `dev_server.py` with GEMINI_API_KEY set to enable this.
+	        // You can override the proxy base via:
+	        // - URL param: ?apiBase=https://your-api-host
+	        // - localStorage: craft_api_base
+	        const DEFAULT_API_BASE = "https://jkhboywafpdesmdguvts.functions.supabase.co/functions/v1/craft-ai";
+	        const getApiBase = () => {
+	            try {
+	                const u = new URL(window.location.href);
+	                const fromQuery = (u.searchParams.get('apiBase') || '').trim();
+	                if (fromQuery) return fromQuery.replace(/\/+$/, '');
+	                const fromLS = (safeStorageGet('craft_api_base') || '').trim();
+	                if (fromLS) return fromLS.replace(/\/+$/, '');
+	            } catch (_) {}
+	            const host = (window.location.hostname || '').toLowerCase();
+	            if (host === 'localhost' || host === '127.0.0.1') return '';
+	            return DEFAULT_API_BASE;
+	        };
+	        const GEMINI_PROXY_PATH = () => `${getApiBase()}/api/gemini`;
+		        const apiKey = ""; 
+		        const DEFAULT_SILICONFLOW_KEY = ""; // 用户自行填写
+	        const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
+	        const DEFAULT_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1";
+	        const DEFAULT_SILICONFLOW_MODEL = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B";
+	        lucide.createIcons();
 
         // 1. Markdown Config
         const md = window.markdownit({ html: true, breaks: true, linkify: true, typographer: true })
@@ -662,62 +688,143 @@
             navigator.clipboard.writeText(prompt).then(() => showToast("提示词已复制，请去元宝粘贴")).catch(() => showToast("复制失败，请手动复制"));
         }
         
-        function updateAiProvider() {
-            const provider = document.getElementById('api-provider').value;
-            const openai = document.getElementById('openai-settings');
-            const keyInput = document.getElementById('api-key');
-            if (provider === 'siliconflow') { 
-                openai.classList.remove('hidden'); 
-                document.getElementById('base-url').value = "https://api.siliconflow.cn/v1"; 
-                document.getElementById('model-name').value = "Qwen/Qwen2-7B-Instruct"; 
-                if(!keyInput.value) keyInput.value = DEFAULT_SILICONFLOW_KEY; 
-            } 
-            else if (provider === 'openai') { 
-                openai.classList.remove('hidden'); 
-                document.getElementById('base-url').value = ""; 
-                document.getElementById('model-name').value = ""; 
-                keyInput.placeholder = "sk-..."; 
-                if(keyInput.value === DEFAULT_SILICONFLOW_KEY) keyInput.value = ""; 
-            } 
-            else { 
-                openai.classList.add('hidden'); 
-                keyInput.placeholder = "默认使用 (Gemini)"; 
-                keyInput.value = ""; 
-            }
-        }
+	        function updateAiProvider() {
+	            const provider = document.getElementById('api-provider').value;
+	            const openai = document.getElementById('openai-settings');
+	            const keyInput = document.getElementById('api-key');
+	            if (provider === 'siliconflow') { 
+	                openai.classList.remove('hidden'); 
+	                document.getElementById('base-url').value = DEFAULT_SILICONFLOW_BASE_URL; 
+	                document.getElementById('model-name').value = DEFAULT_SILICONFLOW_MODEL; 
+	                keyInput.placeholder = "sk-... (SiliconFlow)";
+	            } 
+	            else if (provider === 'openai') { 
+	                openai.classList.remove('hidden'); 
+	                document.getElementById('base-url').value = DEFAULT_OPENAI_BASE_URL; 
+	                document.getElementById('model-name').value = "gpt-3.5-turbo"; 
+	                keyInput.placeholder = "sk-... (OpenAI)"; 
+	                const stored = safeStorageGet(STORAGE_KEY_OPENAI);
+	                if (!keyInput.value && stored) keyInput.value = stored;
+	                if(keyInput.value === DEFAULT_SILICONFLOW_KEY) keyInput.value = ""; 
+	            } 
+	            else { 
+	                openai.classList.add('hidden'); 
+	                keyInput.placeholder = "Gemini 默认走本地代理（不需要在这里填 Key）"; 
+	                // Do not auto-fill Gemini keys into the browser.
+	            }
+	        }
         
         // --- Updated AI Beautify Logic ---
-        async function aiBeautify() {
-            const start = editor.selectionStart; const end = editor.selectionEnd; const hasSelection = start !== end; const selectedText = editor.value.substring(start, end);
-            const textToProcess = hasSelection ? selectedText : editor.value;
-            if(!textToProcess.trim()) { showToast("请先输入或选中内容"); return; }
-            showToast("AI 修复中... (格式优化)"); 
-            const providerEl = document.getElementById('api-provider'); if(!providerEl.value) updateAiProvider();
-            const provider = providerEl.value; const userKey = document.getElementById('api-key').value.trim();
+	        async function aiBeautify() {
+	            const start = editor.selectionStart; const end = editor.selectionEnd; const hasSelection = start !== end; const selectedText = editor.value.substring(start, end);
+	            const textToProcess = hasSelection ? selectedText : editor.value;
+	            if(!textToProcess.trim()) { showToast("请先输入或选中内容"); return; }
+	            showToast("AI 修复中... (格式优化)"); 
+	            if (location.protocol === 'file:') {
+	                // Opening via file:// often triggers CORS/origin-null limitations for some APIs and PWA assets.
+	                // Continue anyway, but give the user a hint.
+	                // (No throw here: some providers may still work.)
+	                console.warn("Running from file://. If API requests fail, try serving via http://localhost.");
+	            }
+	            const providerEl = document.getElementById('api-provider'); if(!providerEl.value) updateAiProvider();
+	            const provider = providerEl.value; const userKey = document.getElementById('api-key').value.trim();
+	            if (provider === 'openai' && userKey) safeStorageSet(STORAGE_KEY_OPENAI, userKey);
             
             // STRICT System Prompt
-            const systemPrompt = `You are a strict Markdown syntax corrector. Your ONLY job is to fix Markdown formatting errors and broken LaTeX math formulas. 
-Rules:
-1. **DO NOT change the original meaning, wording, or content.** Keep the text exactly as is, only fixing syntax.
-2. Fix broken LaTeX math (e.g., convert "a^2 + b^2 = c^2" to "$a^2 + b^2 = c^2$").
-3. Ensure headings, lists, and bold text use correct Markdown syntax.
-4. Output ONLY the raw Markdown content. Do not output conversational text.`;
+	            const systemPrompt = `You are a strict Markdown syntax corrector. Your ONLY job is to fix Markdown formatting errors and broken LaTeX math formulas.
+	Rules:
+	0. **ABSOLUTE CONSTRAINT**: Preserve the user's original text character-by-character and in the same order. Only add/remove the minimum characters strictly required to fix Markdown syntax or to add missing LaTeX math delimiters ($...$ / $$...$$).
+	1. **DO NOT** paraphrase, rewrite, translate, summarize, expand, shorten, reorder, or "polish" any wording.
+	2. **DO NOT** change punctuation, spacing, or line breaks unless it is strictly necessary to correct broken Markdown/LaTeX.
+	3. Fix broken LaTeX math (e.g., wrap formulas with $...$) WITHOUT changing the formula content.
+	4. Ensure headings, lists, emphasis, code fences, and links use correct Markdown syntax (minimal edits only).
+	5. If you are unsure whether a change is necessary, return the input unchanged.
+	Output ONLY the raw Markdown. No explanations, no extra text.`;
 
-            try {
-                let resText = "";
-                // Fixed URL format here
-                const baseUrl = "https://api.siliconflow.cn/v1"; 
-                const model = "Qwen/Qwen2-7B-Instruct";
-                const res = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userKey}` }, body: JSON.stringify({ model, messages: [{role:"system",content:systemPrompt},{role:"user",content:textToProcess}], temperature: 0.1 }) });
-                const d = await res.json(); resText = d.choices?.[0]?.message?.content;
-                
-                if (resText) {
-                    const cleanText = resText.replace(/^```markdown\n/,'').replace(/\n```$/,'');
-                    if (hasSelection) editor.value = editor.value.substring(0, start) + cleanText + editor.value.substring(end); else editor.value = cleanText;
-                    syncEditor(); showToast("格式修复完成"); triggerConfetti(); showAiFeedback();
-                } else throw new Error("无返回");
-            } catch(e) { showToast("API 错误: " + e.message); }
-        }
+	            try {
+	                let resText = "";
+	                if (provider === 'gemini') {
+	                    // Default: call local proxy so the Gemini key stays on the server side (env var).
+	                    // Fallback: if proxy isn't available, allow direct call with user-provided key.
+	                    const model = "gemini-2.5-flash";
+	                    let res;
+	                    try {
+	                        res = await fetch(GEMINI_PROXY_PATH(), {
+	                            method: "POST",
+	                            headers: { "Content-Type": "application/json" },
+	                            body: JSON.stringify({
+	                                // Let the server pick a model (rotating across allowed models) unless user explicitly sets one.
+	                                contents: [{ parts: [{ text: textToProcess }] }],
+	                                systemInstruction: { parts: [{ text: systemPrompt }] },
+	                            }),
+	                        });
+	                    } catch (e) {
+	                        res = null;
+	                    }
+	
+	                    if (!res || res.status === 404) {
+	                        const k = userKey || apiKey;
+	                        if (!k) throw new Error("Gemini 代理不可用：请用 GEMINI_API_KEY 启动 dev_server.py，或在这里临时填 Gemini Key");
+	                        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${k}`;
+	                        res = await fetch(url, {
+	                            method: "POST",
+	                            headers: { "Content-Type": "application/json" },
+	                            body: JSON.stringify({
+	                                contents: [{ parts: [{ text: textToProcess }] }],
+	                                systemInstruction: { parts: [{ text: systemPrompt }] },
+	                            }),
+	                        });
+	                    }
+	
+	                    const d = await res.json().catch(() => ({}));
+	                    if (!res.ok) {
+	                        const msg = d?.error?.message || d?.message || `${res.status} ${res.statusText}`;
+	                        throw new Error(`Gemini 请求失败: ${msg}`);
+	                    }
+	                    resText = d.candidates?.[0]?.content?.parts?.[0]?.text;
+	                } else {
+	                    const baseUrlInput = (document.getElementById('base-url')?.value || "").trim();
+	                    const modelInput = (document.getElementById('model-name')?.value || "").trim();
+	
+	                    const baseUrl = (baseUrlInput || (provider === 'siliconflow' ? DEFAULT_SILICONFLOW_BASE_URL : DEFAULT_OPENAI_BASE_URL)).replace(/\/+$/, '');
+	                    const model = modelInput || (provider === 'siliconflow' ? DEFAULT_SILICONFLOW_MODEL : "gpt-3.5-turbo");
+	
+	                    const effectiveKey = provider === 'siliconflow' ? userKey : userKey;
+	                    if (!effectiveKey) throw new Error("请填写 API Key");
+	
+	                    const res = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` }, body: JSON.stringify({ model, messages: [{role:"system",content:systemPrompt},{role:"user",content:textToProcess}], temperature: 0.1 }) });
+	                    const d = await res.json().catch(() => ({}));
+	                    if (!res.ok) {
+	                        const msg = d?.error?.message || d?.message || `${res.status} ${res.statusText}`;
+	                        throw new Error(`请求失败: ${msg}`);
+	                    }
+	                    resText = d.choices?.[0]?.message?.content;
+	                }
+	                
+	                if (resText) {
+	                    const cleanText = resText.replace(/^```markdown\n/,'').replace(/\n```$/,'');
+	                    if (hasSelection) editor.value = editor.value.substring(0, start) + cleanText + editor.value.substring(end); else editor.value = cleanText;
+	                    syncEditor(); showToast("格式修复完成"); triggerConfetti(); showAiFeedback();
+	                } else throw new Error("无返回内容（可能是模型不支持/被限流/鉴权失败）");
+	            } catch(e) {
+	                const msg = (e && e.message) ? String(e.message) : String(e);
+	                const providerNow = document.getElementById('api-provider')?.value || 'unknown';
+	                const baseUrlNow = (document.getElementById('base-url')?.value || '').trim();
+	                console.error("AI request failed:", { provider: providerNow, baseUrl: baseUrlNow, error: e });
+	
+	                // Fetch-level errors (CORS / blocked / offline) often surface as TypeError: Failed to fetch
+	                const isFetchFailed = (e && e.name === 'TypeError' && /failed to fetch/i.test(msg)) || /failed to fetch/i.test(msg);
+	                if (isFetchFailed) {
+	                    const hint = (location.protocol === 'file:')
+	                        ? "（你现在是 file:// 打开，建议用 http://localhost 打开）"
+	                        : "（可能是 CORS/网络拦截/代理插件导致）";
+	                    showToast("网络请求失败: Failed to fetch " + hint);
+	                    return;
+	                }
+	
+	                showToast("API 错误: " + msg);
+	            }
+	        }
         
         function triggerConfetti() { if(typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#facc15', '#171717', '#ffffff'] }); }
         function aiBeautifySelection() { aiBeautify(); }

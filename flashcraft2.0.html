@@ -456,7 +456,20 @@
         return runTxt();
     };
 
-    // --- Component Definitions ---
+	    // --- Component Definitions ---
+
+	    const getCraftApiBase = () => {
+	        try {
+	            const u = new URL(window.location.href);
+	            const fromQuery = (u.searchParams.get('apiBase') || '').trim();
+	            if (fromQuery) return fromQuery.replace(/\/+$/, '');
+	            const fromLS = (localStorage.getItem('craft_api_base') || '').trim();
+	            if (fromLS) return fromLS.replace(/\/+$/, '');
+	        } catch (_) {}
+	        const host = (window.location.hostname || '').toLowerCase();
+	        if (host === 'localhost' || host === '127.0.0.1') return '';
+	        return 'https://jkhboywafpdesmdguvts.functions.supabase.co/functions/v1/craft-ai';
+	    };
 
     const AppendImportModal = ({ isOpen, onClose, onAppendCards, lang, onToast }) => {
         const [jsonInput, setJsonInput] = useState('');
@@ -581,21 +594,23 @@
     };
 
     // 2. CreateDeckModal (AI Import + Create Blank)
-    const CreateDeckModal = ({ isOpen, onClose, onImport, onCreateEmpty, lang, onToast }) => {
-        const [jsonInput, setJsonInput] = useState('');
-        const [errorMsg, setErrorMsg] = useState(null);
-        const [totalCards, setTotalCards] = useState(80);
-        const [maxPerReply, setMaxPerReply] = useState(15);
-        const [pendingCards, setPendingCards] = useState([]);
-        const [lastParsed, setLastParsed] = useState(0);
-        const [titleInput, setTitleInput] = useState('');
-        const [descInput, setDescInput] = useState('');
-        const [colorInput, setColorInput] = useState('#3b82f6');
-        const [isClearing, setIsClearing] = useState(false);
-        const [parserMode, setParserMode] = useState('auto');
-        const fileInputRef = useRef(null);
-        const t = TRANSLATIONS[lang];
-        const COLORS = ['#171717', '#facc15', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6'];
+	    const CreateDeckModal = ({ isOpen, onClose, onImport, onCreateEmpty, lang, onToast }) => {
+	        const [jsonInput, setJsonInput] = useState('');
+	        const [errorMsg, setErrorMsg] = useState(null);
+	        const [totalCards, setTotalCards] = useState(80);
+	        const [maxPerReply, setMaxPerReply] = useState(15);
+	        const [pendingCards, setPendingCards] = useState([]);
+	        const [lastParsed, setLastParsed] = useState(0);
+	        const [titleInput, setTitleInput] = useState('');
+	        const [descInput, setDescInput] = useState('');
+	        const [colorInput, setColorInput] = useState('#3b82f6');
+	        const [isClearing, setIsClearing] = useState(false);
+	        const [parserMode, setParserMode] = useState('auto');
+	        const [autoReq, setAutoReq] = useState('');
+	        const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+	        const fileInputRef = useRef(null);
+	        const t = TRANSLATIONS[lang];
+	        const COLORS = ['#171717', '#facc15', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6'];
 
         useEffect(() => { setMaxPerReply(prev => Math.max(5, Math.min(prev, totalCards))); }, [totalCards]);
 
@@ -612,18 +627,56 @@
                 .catch(() => onToast?.({ variant: 'error', title: t.createWizard, message: t.manualCopy }));
         };
 
-        const handleFileUpload = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => { setJsonInput(event.target.result); setErrorMsg(null); };
-            reader.readAsText(file);
-        };
+	        const handleFileUpload = (e) => {
+	            const file = e.target.files[0];
+	            if (!file) return;
+	            const reader = new FileReader();
+	            reader.onload = (event) => { setJsonInput(event.target.result); setErrorMsg(null); };
+	            reader.readAsText(file);
+	        };
 
-        const handleParseAndAccumulate = () => {
-            setErrorMsg(null);
-            const cards = parseCardsFromInput(jsonInput, parserMode);
-            if (!cards.length) { setErrorMsg(t.formatError); return; }
+	        const handleAutoGenerate = async () => {
+	            setErrorMsg(null);
+	            const sourceText = (jsonInput || '').trim();
+	            if (!sourceText) { setErrorMsg(lang === 'zh' ? "请先粘贴资料或上传文件" : "Paste source text or upload a file first."); return; }
+	            setIsAutoGenerating(true);
+	            try {
+	                const apiBase = getCraftApiBase();
+	                const res = await fetch(`${apiBase}/api/flashcraft/generate_deck`, {
+	                    method: 'POST',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify({ requirements: autoReq, sourceText, totalCards })
+	                });
+	                const data = await res.json().catch(() => ({}));
+	                if (!res.ok) {
+	                    const msg = data?.error?.message || `${res.status} ${res.statusText}`;
+	                    throw new Error(msg);
+	                }
+	                const cardsRaw = Array.isArray(data.cards) ? data.cards : [];
+	                const now = Date.now();
+	                const cards = cardsRaw.map((c, i) => ({
+	                    id: `card-${now}-${i}`,
+	                    front: (c?.front ?? '').toString(),
+	                    back: (c?.back ?? '').toString(),
+	                })).filter(c => c.front.trim() || c.back.trim());
+	                if (!cards.length) throw new Error(lang === 'zh' ? "AI 未返回可用卡片" : "No cards returned.");
+
+	                setPendingCards(cards);
+	                setLastParsed(cards.length);
+	                if (!titleInput.trim() && data.title) setTitleInput(String(data.title));
+	                if (!descInput.trim() && data.desc) setDescInput(String(data.desc));
+	                onToast?.({ variant: 'success', title: lang === 'zh' ? 'AI 自动生成' : 'AI Generate', message: `${cards.length} ${t.cards}`, icon: 'sparkles' });
+	            } catch (e) {
+	                setErrorMsg((lang === 'zh' ? "AI 生成失败: " : "AI generation failed: ") + (e?.message || String(e)));
+	            } finally {
+	                setIsAutoGenerating(false);
+	            }
+	        };
+
+	        const handleParseAndAccumulate = () => {
+	            setErrorMsg(null);
+	            const cards = parseCardsFromInput(jsonInput, parserMode);
+	            if (!cards.length) { setErrorMsg(t.formatError); return; }
             setPendingCards(prev => [...prev, ...cards]);
             setLastParsed(cards.length);
             setIsClearing(true);
@@ -673,25 +726,35 @@
                             <div className="h-px bg-gray-200 flex-1"></div>
                         </div>
 
-                        {/* Option 2: AI Import Wizard */}
-                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="bot" size={16}/> {t.importStep1}</h4></div>
-                            <div className="relative group">
-                                <textarea readOnly value={AI_PROMPT} className="w-full h-40 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
-                                <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
-                            </div>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckTitleLabel}</label><input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={t.deckTitle} /></div>
-                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16}/> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt" className="hidden" onChange={handleFileUpload} /></div></div>
-                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
-                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
-                                <div className="flex gap-2">
-                                    {['auto','json','txt'].map(mode => (
-                                        <button key={mode} onClick={() => setParserMode(mode)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}>{mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}</button>
-                                    ))}
-                                </div>
-                            </div>
+	                        {/* Option 2: AI Import Wizard */}
+	                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+	                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="bot" size={16}/> {t.importStep1}</h4></div>
+	                            <div className="relative group">
+	                                <textarea readOnly value={AI_PROMPT} className="w-full h-40 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
+	                                <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
+	                            </div>
+	                        </div>
+	                        <div className="space-y-3">
+	                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckTitleLabel}</label><input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={t.deckTitle} /></div>
+	                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16}/> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt,.md" className="hidden" onChange={handleFileUpload} /></div></div>
+	                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+	                                <div className="flex items-center justify-between gap-3">
+	                                    <div className="text-[11px] font-bold text-gray-700 flex items-center gap-2"><Icon name="sparkles" size={14}/> {lang === 'zh' ? 'AI 自动生成词书（Beta）' : 'AI Auto-generate Deck (Beta)'}</div>
+	                                    <button onClick={handleAutoGenerate} disabled={isAutoGenerating || !jsonInput.trim()} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${isAutoGenerating || !jsonInput.trim() ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-craft-black text-white hover:bg-gray-800 shadow-sm'}`}>
+	                                        {isAutoGenerating ? (lang === 'zh' ? '生成中…' : 'Generating…') : (lang === 'zh' ? '一键生成' : 'Generate')}
+	                                    </button>
+	                                </div>
+	                                <input value={autoReq} onChange={(e) => setAutoReq(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={lang === 'zh' ? '生成要求（可选）：例如「按章节」「更偏考点」「带例题」' : 'Optional requirements (e.g. by chapters, exam-focused, with examples)'} />
+	                                <div className="text-[10px] text-gray-500 leading-relaxed">{lang === 'zh' ? '说明：该功能会调用站点的 Gemini 代理（共享免费额度），达到上限后会提示稍后再试。' : 'Note: Uses the site Gemini proxy (shared free quota). If quota is exceeded, try later.'}</div>
+	                            </div>
+	                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+	                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
+	                                <div className="flex gap-2">
+	                                    {['auto','json','txt'].map(mode => (
+	                                        <button key={mode} onClick={() => setParserMode(mode)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}>{mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}</button>
+	                                    ))}
+	                                </div>
+	                            </div>
                             <div className={`relative`}><textarea value={jsonInput} onChange={e => { setJsonInput(e.target.value); setErrorMsg(null); }} className={`w-full h-40 p-4 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white resize-none shadow-inner transition-colors ${isClearing ? 'animate-fade-out' : ''}`} placeholder={t.pasteJsonPlaceholder}></textarea></div>
                             {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 animate-pulse border border-red-100"><Icon name="alert-circle" size={16} /> {errorMsg}</div>}
                             {pendingCards.length > 0 && <div className="p-3 bg-green-50 text-green-700 text-xs font-bold rounded-xl flex items-center gap-2 border border-green-100"><Icon name="check-circle" size={16} /> {t.accumulatedCards}: {pendingCards.length} {t.cards} {lastParsed ? `( +${lastParsed} )` : ''}</div>}

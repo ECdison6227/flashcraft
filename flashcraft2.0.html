@@ -15,8 +15,10 @@
   <meta name="apple-mobile-web-app-title" content="Craft" />
   
   <!-- 核心依赖 -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+    <script>if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js"; }</script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   
@@ -215,12 +217,16 @@
         zh: {
             library: "我的词书库", newDeck: "新建词书", settings: "设置", import: "导入", account: "账户", loginTitle: "登录 FlashCraft", loginDesc: "使用邮箱验证码登录（无需密码）。", emailPlaceholder: "邮箱地址", sendMagicLink: "获取验证码", magicLinkSent: "已发送，请检查邮箱", signOut: "退出登录", loading: "加载中…", pro: "Pro", free: "免费", upgrade: "升级 Pro", redeemCode: "兑换码", redeem: "兑换", codePlaceholder: "输入兑换码…", admin: "管理员", openAdmin: "打开后台", share: "分享", shareCode: "分享码", shareSettings: "分享设置", shareDesc: "任何获得分享码的人都可以导入该词书（对方会获得独立副本）。", notShared: "未开启分享", disableShare: "关闭分享", updateShare: "更新分享码", regenerate: "重新生成", shareHint: "建议格式：FC-8X92", shareUpdated: "分享码已更新", shareDisabled: "已关闭分享", shareInvalid: "分享码格式不正确", shareTaken: "该分享码已被占用，请换一个", ttsOn: "朗读已开启", ttsOff: "朗读已关闭", importShared: "导入分享词书", enterShareCode: "输入分享码（如 FC-8X92）", generateShareCode: "生成分享码", copy: "复制", adminDashboard: "管理员面板", userCount: "用户数", proCount: "Pro 用户", generateCode: "生成兑换码", redeemSuccess: "已开通 Pro！", redeemInvalid: "兑换码无效或已使用", proUnlockedTitle: "Pro 已解锁", proUnlockedDesc: "无限词书，尽情创作。", proUnlockedBtn: "太棒了", proWelcomeTitle: "欢迎回来，Pro", proWelcomeDesc: "无限词书已为你解锁。继续创作吧。", proWelcomeBtn: "开始创作", exportBackup: "导出备份", resetData: "重置所有数据", reduceMotion: "减弱动效", language: "语言 / Language", author: "作者联系方式", exportManager: "导出管理", selectDeck: "选择词书...", exportBtn: "导出词书", importWizard: "智能导入向导", importStep1: "1. AI 提示词助手", importStep2: "2. 粘贴内容 / 上传文件", copyPrompt: "复制提示词", parseImport: "解析并导入", parseAndAccumulate: "解析并累计", finalizeImport: "创建词书", accumulatedCards: "已累计", importNeedCards: "请先解析至少 1 条 JSON", deckTitleLabel: "词书标题（必填）", deckDescLabel: "描述（可选）", parseMode: "解析模式", parseAuto: "自动", parseJsonOnly: "只解析 JSON", parseTxtOnly: "只解析 TXT", parseModeTip: "如果模型输出纯文本/代码块，选 TXT；纯 JSON 选 JSON；默认自动", appendImport: "追加导入", appendImportTitle: "追加导入到当前词书", appendImportDesc: "支持多次导入，只会追加卡片，不会覆盖标题/描述。", appendImportBtn: "解析并追加", appendedCards: "已追加卡片", guideWelcome: "欢迎来到 FlashCraft", guideDesc: "您的极简记忆工坊。", guideFeaturesTitle: "你可以做什么", guideF1Title: "创建词书", guideF1Desc: "用 Markdown & LaTeX 写卡片。", guideF2Title: "AI 智能导入", guideF2Desc: "复制提示词，让 AI 生成 JSON 一键导入。", guideF3Title: "学习进度", guideF3Desc: "进度自动保存，随时继续。", guideF4Title: "分享与复制", guideF4Desc: "分享码让朋友导入独立副本。", guideF5Title: "Pro 解锁", guideF5Desc: "免费 5 本，Pro 无限。", aiGuideTitle: "AI 导入怎么用？", aiGuide1: "1) 设置总张数 / 每次上限，然后点「复制提示词」", aiGuide2: "2) 粘贴到 GPT/豆包，并把资料/文本一起发给它（无需 title/desc）", aiGuide3: "3) 复制它返回的第一段 JSON 到下方输入框", aiGuide4: "4) 填写上面的词书标题/描述 → 点「解析并累计」", aiGuide5: "5) 如果返回 has_more=true，在 AI 里只输入「继续」生成下一段 JSON", aiGuide6: "6) 后续 JSON：继续点「解析并累计」累加卡片", aiGuide7: "7) has_more=false 后，点击「创建词书」一次性导入", aiGuide8: "小贴士：每次只粘贴一段完整 JSON（不要一次粘多段）", continueOnly: "后续只需在 AI 里回复一个词：继续（不要再粘提示词/标题/解释）。", continueOnlyShort: "后续只回：继续", watchHasMore: "看到 has_more=false 就停止，让 AI 告诉你可以去 FlashCraft 导入。", aiTotal: "目标总张数", aiBatch: "每次输出上限", aiSuggested: "建议：总张数 60~120，每次 10~20（太长就降低）", appendGuideTitle: "追加导入怎么用？", appendGuide1: "1) 设置总张数 / 每次上限，然后点「复制提示词」", appendGuide2: "2) 粘贴到 GPT/豆包，并把资料/文本一起发给它", appendGuide3: "3) 复制 AI 返回的 JSON 到下方输入框", appendGuide4: "4) 点击「解析并追加」把卡片追加进当前词书", appendGuide5: "5) 若 has_more=true，回到 AI 输入「继续」，再追加下一段 JSON", guideStart: "开始使用", cards: "张卡片", deckTitle: "词书标题", deckDesc: "描述", theme: "主题色", addCard: "添加新卡片 (支持 Markdown)", front: "正面 (问题)", back: "背面 (答案)", done: "完成", shuffle: "乱序播放", restart: "重新开始", promptCopied: "提示词已复制！", manualCopy: "请手动复制", contentEmpty: "内容为空", formatError: "格式无法识别，请检查。", resetConfirm: "确定要重置所有数据吗？此操作无法撤销。", deleteConfirm: "确定要删除这本词书吗？", contactCopied: "联系方式已复制", magicLinkTipTitle: "Magic Link 提示", magicLinkTip1: "请在当前设备（同一浏览器）打开邮箱并点击登录链接完成验证。", magicLinkTip2: "若你在共享/陌生设备误点了链接，登录后可在「设置 → 退出登录」退出。", ok: "知道了", poweredBy: "由 Supabase 提供支持", sortDefault: "默认", sortColor: "颜色", sortCount: "数量", edit: "编辑", delete: "删除", deleted: "已删除", deckRemoved: "词书已删除", resetDone: "完成", untitled: "未命名", imported: "已导入", aiGenerated: "AI 生成", deckCopied: "已复制", shareGenerateFailed: "生成分享码失败", shareGenerateUniqueFailed: "分享码冲突，请重试", noDescription: "暂无描述", backNav: "返回", add: "添加", descPlaceholder: "添加一句简介…", tapToFlip: "点击翻面", upload: "上传", pasteJsonPlaceholder: "粘贴 JSON 或 TXT...", importedTextDeckTitle: "导入文本词书", importedOn: "导入于", pricingFreeBadge: "5 本", pricingFreeDesc: "你已达到免费词书上限，升级 Pro 解锁更多词书与高级功能。", pricingProBadge: "无限", pricingProDesc: "使用兑换码即可为当前账号开通 Pro。", adminLoadFailed: "加载统计失败（可能是 RLS）", adminEmptyCode: "生成的兑换码为空",
             dailyGoal: "每日打卡", dailyGoalDesc: "目标：背诵30卡片 + 专注10分钟", checkInSuccess: "打卡成功！今日目标达成！", cardProgress: "卡片", timeProgress: "时长", minutes: "分", keepGoing: "加油，还差一点！", checkedIn: "今日已打卡",
-            createBlank: "创建空白词书", createBlankDesc: "从零开始，手动录入卡片。", createWizard: "新建词书", createDeckBtn: "创建空白词书"
+            createBlank: "创建空白词书", createBlankDesc: "从零开始，手动录入卡片。", createWizard: "新建词书", createDeckBtn: "创建空白词书",
+            leaderboard: "全站排行榜（前5）", rank: "排名", levelLabel: "等级", deckCount: "打卡词书", studyTime: "学习时长",
+            groups: "学习小组", joinGroup: "加入小组", groupCode: "邀请码", groupMembers: "成员", weeklyCheckins: "本周打卡", todayCheckin: "今日打卡", totalStudy: "总学习时长"
         },
         en: {
             library: "My Library", newDeck: "New Deck", settings: "Settings", import: "Import", account: "Account", loginTitle: "Sign in to FlashCraft", loginDesc: "Email login via verification code (no password).", emailPlaceholder: "Email address", sendMagicLink: "Send Magic Link", magicLinkSent: "Sent! Check your inbox", signOut: "Sign out", loading: "Loading…", pro: "Pro", free: "Free", upgrade: "Upgrade to Pro", redeemCode: "Redeem Code", redeem: "Redeem", codePlaceholder: "Enter code…", admin: "Admin", openAdmin: "Open Admin", share: "Share", shareCode: "Share Code", shareSettings: "Share Settings", shareDesc: "Anyone with the code can import this deck (they get an independent copy).", notShared: "Sharing is off", disableShare: "Disable sharing", updateShare: "Update code", regenerate: "Regenerate", shareHint: "Suggested: FC-8X92", shareUpdated: "Share code updated", shareDisabled: "Sharing disabled", shareInvalid: "Invalid share code format", shareTaken: "That code is taken. Try another one.", ttsOn: "TTS on", ttsOff: "TTS off", importShared: "Import Shared Deck", enterShareCode: "Enter share code (e.g., FC-8X92)", generateShareCode: "Generate Code", copy: "Copy", adminDashboard: "Admin Dashboard", userCount: "Users", proCount: "Pro Users", generateCode: "Generate Code", redeemSuccess: "Pro activated!", redeemInvalid: "Invalid or used code", proUnlockedTitle: "Pro unlocked", proUnlockedDesc: "Unlimited decks. Keep crafting.", proUnlockedBtn: "Nice", proWelcomeTitle: "Welcome back, Pro", proWelcomeDesc: "Unlimited decks are unlocked. Keep crafting.", proWelcomeBtn: "Continue", exportBackup: "Export Backup", resetData: "Reset All Data", reduceMotion: "Reduce Motion", language: "Language", author: "Author Contact", exportManager: "Export Manager", selectDeck: "Select a Deck...", exportBtn: "Export Deck", importWizard: "Import Wizard", importStep1: "1. AI Prompt Helper", importStep2: "2. Paste Content / Upload", copyPrompt: "Copy Prompt", parseImport: "Parse & Import", parseAndAccumulate: "Parse & Accumulate", finalizeImport: "Create Deck", accumulatedCards: "Accumulated", importNeedCards: "Parse at least one JSON first", deckTitleLabel: "Deck Title (required)", deckDescLabel: "Description (optional)", parseMode: "Parse Mode", parseAuto: "Auto", parseJsonOnly: "JSON only", parseTxtOnly: "TXT only", parseModeTip: "If your LLM outputs plain text/markdown, choose TXT; if pure JSON, choose JSON. Auto tries JSON then TXT.", appendImport: "Append Import", appendImportTitle: "Append into this deck", appendImportDesc: "You can import multiple times. Cards will be appended without overwriting title/desc.", appendImportBtn: "Parse & Append", appendedCards: "Cards appended", guideWelcome: "Welcome to FlashCraft", guideDesc: "Your minimalist memory workshop.", guideFeaturesTitle: "What you can do", guideF1Title: "Create decks", guideF1Desc: "Write cards with Markdown & LaTeX.", guideF2Title: "AI import", guideF2Desc: "Copy the prompt, ask an LLM to output JSON, then import.", guideF3Title: "Study progress", guideF3Desc: "Progress is saved automatically.", guideF4Title: "Share & copy", guideF4Desc: "Share code lets others import an independent copy.", guideF5Title: "Go Pro", guideF5Desc: "Free: 5 decks. Pro: unlimited.", aiGuideTitle: "How to use AI import?", aiGuide1: "1) Set TOTAL / MAX_PER_REPLY, then click Copy Prompt", aiGuide2: "2) Paste into GPT/Doubao with your source text (no title/desc needed)", aiGuide3: "3) Copy the first JSON into the box below", aiGuide4: "4) Fill title/desc above → Click Parse & Accumulate", aiGuide5: "5) If has_more=true, reply with just: 继续 to get next JSON", aiGuide6: "6) Keep Parse & Accumulate for each JSON chunk", aiGuide7: "7) When has_more=false, click Create Deck to import all cards", aiGuide8: "Tip: paste ONE complete JSON each time (don’t paste multiple outputs at once).", continueOnly: "After the first reply, just send a single word: 继续 (no prompt, no title, no explanations).", continueOnlyShort: "Next replies: 继续 only", watchHasMore: "When has_more=false, stop asking; the AI should tell you to import in FlashCraft.", aiTotal: "TOTAL", aiBatch: "MAX_PER_REPLY", aiSuggested: "Suggested: TOTAL 60–120, MAX_PER_REPLY 10–20 (lower if truncated).", appendGuideTitle: "How to append import?", appendGuide1: "1) Set TOTAL / MAX_PER_REPLY, then click Copy Prompt", appendGuide2: "2) Paste into ChatGPT or Doubao, then paste your source text", appendGuide3: "3) Copy the JSON into the box below", appendGuide4: "4) Click Parse & Append to add cards into this deck", appendGuide5: "5) If has_more=true, reply with 继续 in the LLM and append the next JSON", guideStart: "Get Started", cards: "Cards", deckTitle: "Deck Title", deckDesc: "Description", theme: "Theme", addCard: "Add Card (Markdown Supported)", front: "Front (Question)", back: "Back (Answer)", done: "Done", shuffle: "Shuffle", restart: "Restart", promptCopied: "Prompt Copied!", manualCopy: "Please copy manually", contentEmpty: "Content is empty", formatError: "Format not recognized.", resetConfirm: "Reset all data? This cannot be undone.", deleteConfirm: "Delete this deck?", contactCopied: "Contact copied", magicLinkTipTitle: "Magic Link tip", magicLinkTip1: "Open your email and click the sign‑in link on this same device/browser.", magicLinkTip2: "On a shared device, sign out after use (Settings → Sign out).", ok: "OK", poweredBy: "Powered by Supabase", sortDefault: "Default", sortColor: "Color", sortCount: "Count", edit: "Edit", delete: "Delete", deleted: "Deleted", deckRemoved: "Deck removed.", resetDone: "Done.", untitled: "Untitled", imported: "Imported", aiGenerated: "AI Generated", deckCopied: "Deck copied.", shareGenerateFailed: "Failed to generate share code.", shareGenerateUniqueFailed: "Failed to generate a unique share code. Please try again.", noDescription: "No description.", backNav: "Back", add: "Add", descPlaceholder: "Add a brief description...", tapToFlip: "Tap to Flip", upload: "Upload", pasteJsonPlaceholder: "Paste JSON or TXT...", importedTextDeckTitle: "Imported Text Deck", importedOn: "Imported on", pricingFreeBadge: "5 decks", pricingFreeDesc: "Deck limit reached. Upgrade to unlock more decks and pro features.", pricingProBadge: "Unlimited", pricingProDesc: "Use a redemption code to activate Pro on your account.", adminLoadFailed: "Failed to load stats. (RLS?)", adminEmptyCode: "Generated an empty code.",
             dailyGoal: "Daily Goal", dailyGoalDesc: "Target: 30 cards + 10 mins focus", checkInSuccess: "Daily goal achieved!", cardProgress: "Cards", timeProgress: "Time", minutes: "m", keepGoing: "Keep going!", checkedIn: "Checked In",
-            createBlank: "Create Blank Deck", createBlankDesc: "Start from scratch and add cards manually.", createWizard: "Create New Deck", createDeckBtn: "Create Blank Deck"
+            createBlank: "Create Blank Deck", createBlankDesc: "Start from scratch and add cards manually.", createWizard: "Create New Deck", createDeckBtn: "Create Blank Deck",
+            leaderboard: "Leaderboard (Top 5)", rank: "Rank", levelLabel: "Level", deckCount: "Decks", studyTime: "Study Time",
+            groups: "Groups", joinGroup: "Join Group", groupCode: "Invite Code", groupMembers: "Members", weeklyCheckins: "Weekly Check-ins", todayCheckin: "Checked Today", totalStudy: "Total Study"
         }
     };
 
@@ -458,18 +464,176 @@
 
 	    // --- Component Definitions ---
 
-	    const getCraftApiBase = () => {
-	        try {
-	            const u = new URL(window.location.href);
-	            const fromQuery = (u.searchParams.get('apiBase') || '').trim();
-	            if (fromQuery) return fromQuery.replace(/\/+$/, '');
-	            const fromLS = (localStorage.getItem('craft_api_base') || '').trim();
-	            if (fromLS) return fromLS.replace(/\/+$/, '');
-	        } catch (_) {}
-	        const host = (window.location.hostname || '').toLowerCase();
-	        if (host === 'localhost' || host === '127.0.0.1') return '';
-	        return 'https://jkhboywafpdesmdguvts.functions.supabase.co/functions/v1/craft-ai';
-	    };
+        const getCraftApiBase = () => {
+            try {
+                const u = new URL(window.location.href);
+                const fromQuery = (u.searchParams.get('apiBase') || '').trim();
+                if (fromQuery) return fromQuery.replace(/\/+$/, '');
+                const fromLS = (localStorage.getItem('craft_api_base') || '').trim();
+                if (fromLS) return fromLS.replace(/\/+$/, '');
+            } catch (_) {}
+            const host = (window.location.hostname || '').toLowerCase();
+            if (host === 'localhost' || host === '127.0.0.1') return '';
+            return 'https://jkhboywafpdesmdguvts.functions.supabase.co/functions/v1/craft-ai';
+        };
+
+    const maskEmail = (email) => {
+        if (!email || !email.includes('@')) return email || '匿名';
+        const [name, domain] = email.split('@');
+        if (name.length <= 2) return `${name[0] || '*'}***@${domain}`;
+        return `${name.slice(0,2)}***${name.slice(-1)}@${domain}`;
+    };
+
+    const formatStudyMinutes = (minsRaw) => {
+        const m = Number(minsRaw) || 0;
+        if (m >= 60) return `${(m/60).toFixed(1)} h`;
+        return `${m} min`;
+    };
+
+    const LeaderboardModal = ({ isOpen, onClose, data, lang, loading }) => {
+        const t = TRANSLATIONS[lang];
+        if (!isOpen) return null;
+        return (
+            <div className="fixed inset-0 z-[205] bg-black/40 backdrop-blur-md animate-blur-in p-4">
+                <div className="bg-white max-w-3xl mx-auto rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-lg font-bold text-craft-black"><Icon name="trophy" size={18} className="text-amber-500" /> {t.leaderboard}</div>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="flex-1 overflow-auto p-6">
+                        {loading && <div className="text-sm text-gray-500">加载中…</div>}
+                        {!loading && (
+                            <table className="min-w-full text-sm">
+                                <thead className="text-gray-400 text-[11px] uppercase tracking-widest">
+                                    <tr>
+                                        <th className="py-2 text-left w-12">{t.rank}</th>
+                                        <th className="py-2 text-left">{t.account || '账号'}</th>
+                                        <th className="py-2 text-left">{t.levelLabel}</th>
+                                        <th className="py-2 text-left">{t.deckCount}</th>
+                                        <th className="py-2 text-left">{t.studyTime}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(data || []).slice(0,5).map((row, idx) => (
+                                        <tr key={idx} className="border-t border-gray-100 text-gray-700">
+                                            <td className="py-2 font-mono text-xs text-gray-500">{idx + 1}</td>
+                                            <td className="py-2 font-medium">{maskEmail(row.email || row.user_email || '')}</td>
+                                            <td className="py-2 text-xs font-mono">Lv.{row.level || row.lvl || 1}</td>
+                                            <td className="py-2 text-xs font-mono">{row.checked_count ?? row.decks ?? row.deck_count ?? 0}</td>
+                                            <td className="py-2 text-xs font-mono">{formatStudyMinutes(row.total_minutes || row.total_time_min || Math.round((row.total_time_sec || 0)/60))}</td>
+                                        </tr>
+                                    ))}
+                                    {(!data || data.length === 0) && (
+                                        <tr><td colSpan="5" className="py-3 text-center text-gray-400 text-xs">暂无数据</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const GroupModal = ({ isOpen, onClose, groups, loading, onJoin, onCreate, onLeave, onDisband, lang }) => {
+        const t = TRANSLATIONS[lang];
+        const [code, setCode] = React.useState('');
+        const [error, setError] = React.useState(null);
+        const [newName, setNewName] = React.useState('');
+        const [newCode, setNewCode] = React.useState('');
+        if (!isOpen) return null;
+        const handleJoin = async () => {
+            setError(null);
+            const cleaned = (code || '').trim();
+            if (!cleaned) return;
+            const ok = await onJoin(cleaned);
+            if (!ok) setError(lang === 'zh' ? '加入失败或邀请码无效' : 'Join failed or invalid code');
+            else setCode('');
+        };
+        const handleCreate = async () => {
+            setError(null);
+            const name = (newName || '').trim() || (lang === 'zh' ? '学习小组' : 'Group');
+            const invite = (newCode || '').trim();
+            const ok = await onCreate(name, invite || null);
+            if (ok) { setNewName(''); setNewCode(''); }
+            else setError(lang === 'zh' ? '创建失败，请重试' : 'Create failed');
+        };
+        return (
+            <div className="fixed inset-0 z-[205] bg-black/40 backdrop-blur-md animate-blur-in p-4">
+                <div className="bg-white max-w-4xl mx-auto rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-lg font-bold text-craft-black"><Icon name="users" size={18} /> {t.groups}</div>
+                        <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
+                    </div>
+                    <div className="p-6 space-y-4 overflow-auto">
+                        <div className="flex items-center gap-2">
+                            <input value={code} onChange={e => setCode(e.target.value)} placeholder={t.groupCode} className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" />
+                            <button onClick={handleJoin} className="px-4 py-3 bg-craft-black text-white rounded-xl font-bold shadow-sm hover:shadow-md active:scale-95">{t.joinGroup}</button>
+                        </div>
+                        <div className="flex flex-col gap-2 bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                            <div className="text-xs font-bold text-gray-600">{lang === 'zh' ? '创建新小组（可自定义邀请码，不填则自动生成）' : 'Create a new group (invite code optional)'}</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={lang === 'zh' ? '小组名称' : 'Group name'} className="p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" />
+                                <input value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())} placeholder={lang === 'zh' ? '邀请码（可选）' : 'Invite code (optional)'} className="p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" />
+                                <button onClick={handleCreate} className="w-full px-4 py-3 bg-amber-400 text-black rounded-xl font-bold shadow-sm hover:shadow-md active:scale-95 flex items-center justify-center gap-2"><Icon name="plus" size={16}/> {lang === 'zh' ? '创建小组' : 'Create'}</button>
+                            </div>
+                        </div>
+                        {error && <div className="text-xs text-red-500 font-bold">{error}</div>}
+                        {loading ? <div className="text-sm text-gray-500">加载中…</div> : (
+                            <div className="space-y-4">
+                                {(groups || []).map((g, gi) => (
+                                    <div key={g.id || gi} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="font-bold text-craft-black text-sm">{g.name || g.code || 'Group'}</div>
+                                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                                                <span>代码: {g.code || 'N/A'}</span>
+                                                {g.code && (
+                                                    <>
+                                                        <button onClick={() => navigator.clipboard.writeText(g.code)} className="px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold">复制</button>
+                                                    <a href={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(g.code)}`} target="_blank" className="px-2 py-1 rounded-lg bg-white border border-gray-200 hover:border-craft-black text-gray-700 font-bold">二维码</a>
+                                                </>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            <button onClick={() => onLeave?.(g.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 active:scale-95">退出小组</button>
+                                            <button onClick={() => onDisband?.(g.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 active:scale-95">解散（管理员）</button>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full text-xs">
+                                                <thead className="text-gray-400 uppercase tracking-widest">
+                                                    <tr>
+                                                        <th className="py-2 text-left">{t.account || '账号'}</th>
+                                                        <th className="py-2 text-left">{t.levelLabel}</th>
+                                                        <th className="py-2 text-left">{t.weeklyCheckins}</th>
+                                                        <th className="py-2 text-left">{t.totalStudy}</th>
+                                                        <th className="py-2 text-left">{t.todayCheckin}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(g.members || []).map((m, mi) => (
+                                                        <tr key={mi} className="border-t border-gray-100 text-gray-700">
+                                                            <td className="py-2">{maskEmail(m.email || m.user_email || '')}</td>
+                                                            <td className="py-2 font-mono">Lv.{m.level || 1}</td>
+                                                            <td className="py-2 font-mono">{m.week_checkins ?? 0}</td>
+                                                            <td className="py-2 font-mono">{formatStudyMinutes(m.total_minutes || Math.round((m.total_time_sec || 0)/60))}</td>
+                                                            <td className="py-2">{m.today_checked ? '✅' : '—'}</td>
+                                                        </tr>
+                                                    ))}
+                                                    {(g.members || []).length === 0 && <tr><td colSpan="5" className="py-2 text-center text-gray-400">暂无成员</td></tr>}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!groups || groups.length === 0) && <div className="text-xs text-gray-500">尚未加入任何小组，输入邀请码加入吧。</div>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const AppendImportModal = ({ isOpen, onClose, onAppendCards, lang, onToast }) => {
         const [jsonInput, setJsonInput] = useState('');
@@ -495,12 +659,35 @@
                 .catch(() => onToast?.({ variant: 'error', title: t.appendImport, message: t.manualCopy }));
         };
 
-        const handleFileUpload = (e) => {
+        const handleFileUpload = async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => { setJsonInput(String(event.target.result || '')); setErrorMsg(null); };
-            reader.readAsText(file);
+            try {
+                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                    if (!window.pdfjsLib) throw new Error('pdf.js 未加载，需 http/https 方式访问页面');
+                    const buf = await file.arrayBuffer();
+                    const pdf = await window['pdfjsLib'].getDocument({ data: buf }).promise;
+                    let fullText = '';
+                    for (let p = 1; p <= pdf.numPages; p++) {
+                        const page = await pdf.getPage(p);
+                        const content = await page.getTextContent();
+                        fullText += content.items.map(i => i.str || '').join(' ') + '\n';
+                    }
+                    setJsonInput(fullText);
+                } else {
+                    const reader = new FileReader();
+                    const text = await new Promise(resolve => {
+                        reader.onload = (event) => resolve(event.target.result || '');
+                        reader.readAsText(file);
+                    });
+                    setJsonInput(String(text));
+                }
+                setErrorMsg(null);
+            } catch (err) {
+                setErrorMsg((lang === 'zh' ? '文件解析失败: ' : 'Failed to parse file: ') + (err?.message || err));
+            } finally {
+                e.target.value = '';
+            }
         };
 
         const handleAppend = () => {
@@ -537,12 +724,12 @@
                             </div>
                             <div className="text-[10px] text-gray-500">{t.parseModeTip}</div>
                             <div className="relative group">
-                                <textarea readOnly value={AI_PROMPT} className="w-full h-56 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
+                                <textarea readOnly value={AI_PROMPT} className="w-full h-72 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
                                 <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
                             </div>
                         </div>
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16} /> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt" className="hidden" onChange={handleFileUpload} /></div></div>
+	                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16} /> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt,.md,.pdf" className="hidden" onChange={handleFileUpload} /></div></div>
                             <textarea value={jsonInput} onChange={e => { setJsonInput(e.target.value); setErrorMsg(null); }} className="w-full h-44 p-4 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white resize-none shadow-inner transition-colors" placeholder={t.pasteJsonPlaceholder}></textarea>
                             {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 animate-pulse border border-red-100"><Icon name="alert-circle" size={16} /> {errorMsg}</div>}
                         </div>
@@ -594,89 +781,42 @@
     };
 
     // 2. CreateDeckModal (AI Import + Create Blank)
-	    const CreateDeckModal = ({ isOpen, onClose, onImport, onCreateEmpty, lang, onToast }) => {
-	        const [jsonInput, setJsonInput] = useState('');
-	        const [errorMsg, setErrorMsg] = useState(null);
-	        const [totalCards, setTotalCards] = useState(80);
-	        const [maxPerReply, setMaxPerReply] = useState(15);
-	        const [pendingCards, setPendingCards] = useState([]);
-	        const [lastParsed, setLastParsed] = useState(0);
-	        const [titleInput, setTitleInput] = useState('');
-	        const [descInput, setDescInput] = useState('');
-	        const [colorInput, setColorInput] = useState('#3b82f6');
-	        const [isClearing, setIsClearing] = useState(false);
-	        const [parserMode, setParserMode] = useState('auto');
-	        const [autoReq, setAutoReq] = useState('');
-	        const [isAutoGenerating, setIsAutoGenerating] = useState(false);
-	        const fileInputRef = useRef(null);
-	        const t = TRANSLATIONS[lang];
-	        const COLORS = ['#171717', '#facc15', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6'];
+    const CreateDeckModal = ({ isOpen, onClose, onImport, onCreateEmpty, lang, onToast }) => {
+        const [jsonInput, setJsonInput] = useState('');
+        const [errorMsg, setErrorMsg] = useState(null);
+        const [pendingCards, setPendingCards] = useState([]);
+        const [lastParsed, setLastParsed] = useState(0);
+        const [titleInput, setTitleInput] = useState('');
+        const [descInput, setDescInput] = useState('');
+        const [colorInput, setColorInput] = useState('#3b82f6');
+        const [isClearing, setIsClearing] = useState(false);
+        const [parserMode, setParserMode] = useState('auto');
+        const [totalCards, setTotalCards] = useState(80);
+        const [maxPerReply, setMaxPerReply] = useState(15);
+        const [specifyCount, setSpecifyCount] = useState(true);
+        const fileInputRef = useRef(null);
+        const t = TRANSLATIONS[lang];
+        const COLORS = ['#171717', '#facc15', '#3b82f6', '#ef4444', '#10b981', '#8b5cf6'];
 
         useEffect(() => { setMaxPerReply(prev => Math.max(5, Math.min(prev, totalCards))); }, [totalCards]);
 
-        // ... AI Prompt logic same as before ...
-        const AI_PROMPT = lang === 'zh'
-            ? `你是 FlashCraft 词书生成器。请基于我提供的资料生成记忆卡片。\n\n【参数】\n- 目标总张数 TOTAL = ${totalCards}\n- 每次最多输出 MAX_PER_REPLY = ${maxPerReply}（可更少以防截断，但必须保证 JSON 完整）\n\n【输出规则（必须遵守）】\n1) 每次回复只能输出一个完整 JSON，不要解释、不要 Markdown、不要代码块。\n2) JSON 必须可直接 JSON.parse。\n3) 所有批次统一结构：{ "has_more": true/false, "cards": [{ "front": "...", "back": "..." }] }，不要输出 title/desc。\n4) cards 只允许 front/back；不要输出其它字段；front/back 不能为空；不要重复卡片。\n5) 支持公式请用 LaTeX，保持反斜杠：如 \\\\frac{GM}{r^2} 或 $E = mc^2$。\n6) 如果预计会被截断，减少本批 cards 数量，确保 JSON 完整闭合。\n7) 达到 TOTAL 后，把 has_more 设为 false 并停止。\n8) 如果 has_more 已是 false 而我还说“继续”，请回复：has_more 已是 false，请前往 FlashCraft 导入，且不要再输出卡片。\n9) **不要在字符串里换行**，需要换行请写成 \\\\n；否则 JSON 不能解析。\n\n【继续方式】\n- 我只会回复一个词：“继续”\n- 你收到“继续”就输出下一批新的 cards（仍然只输出 JSON），直到 has_more=false。\n\n如果我还没提供资料，请先回复：OK，请粘贴资料。（不要输出 JSON）`
-            : `You are a FlashCraft deck generator. Create study flashcards from my source text.\n\n[Params]\n- TOTAL = ${totalCards}\n- MAX_PER_REPLY = ${maxPerReply} (reduce if needed to avoid truncation)\n\n[Strict rules]\n1) Each reply must be ONE valid JSON only. No explanations. No Markdown. No code fences.\n2) JSON must be directly parseable.\n3) All batches use the same structure: { "has_more": true/false, "cards": [{ "front": "...", "back": "..." }] } — do NOT output title/desc.\n4) cards may only contain front/back; no other fields; no duplicates; front/back cannot be empty.\n5) Keep LaTeX backslashes (e.g., \\\\frac{GM}{r^2} or $E = mc^2$) for formulas.\n6) If length risk, reduce cards to keep JSON complete.\n7) When TOTAL reached, set has_more=false and stop.\n8) If has_more is already false and I still say "继续", reply: has_more is false, you can import in FlashCraft now. Do NOT output cards.\n9) **No raw line breaks inside strings**; use \\\\n for new lines or the JSON will be invalid.\n\n[Continue]\n- I will reply with a single word: 继续\n- When you see 继续, output the next JSON batch until has_more=false.\n\nIf you don't have my source yet, reply: OK, paste the source. (No JSON yet.)`;
+        const AI_PROMPT = React.useMemo(() => {
+            if (specifyCount) {
+                return lang === 'zh'
+                    ? `你是 FlashCraft 词书生成器。请基于我提供的资料生成记忆卡片。\n\n【参数】\n- 目标总张数 TOTAL = ${totalCards}\n- 每次最多输出 MAX_PER_REPLY = ${maxPerReply}（可更少以防截断，但必须保证 JSON 完整）\n\n【输出规则（必须遵守）】\n1) 每次回复只能输出一个完整 JSON，不要解释、不要 Markdown、不要代码块。\n2) JSON 必须可直接 JSON.parse。\n3) 所有批次统一结构：{ "has_more": true/false, "cards": [{ "front": \"...\", \"back\": \"...\" }] }，不要输出 title/desc。\n4) cards 只允许 front/back；不要输出其它字段；front/back 不能为空；不要重复卡片。\n5) 支持公式请用 LaTeX，保持反斜杠：如 \\\\frac{GM}{r^2} 或 $E = mc^2$。\n6) 如果预计会被截断，减少本批 cards 数量，确保 JSON 完整闭合。\n7) 达到 TOTAL 后，把 has_more 设为 false 并停止。\n8) 如果 has_more 已是 false 而我还说“继续”，请回复：has_more 已是 false，请前往 FlashCraft 导入，且不要再输出卡片。\n9) **不要在字符串里换行**，需要换行请写成 \\\\n；否则 JSON 不能解析。\n\n【继续方式】\n- 我只会回复一个词：“继续”\n- 你收到“继续”就输出下一批新的 cards（仍然只输出 JSON），直到 has_more=false。\n\n如果我还没提供资料，请先回复：OK，请粘贴资料。（不要输出 JSON）`
+                    : `You are a FlashCraft deck generator. Create study flashcards from my source text.\n\n[Params]\n- TOTAL = ${totalCards}\n- MAX_PER_REPLY = ${maxPerReply} (reduce if needed to avoid truncation)\n\n[Strict rules]\n1) Each reply must be ONE valid JSON only. No explanations. No Markdown. No code fences.\n2) JSON must be directly parseable.\n3) All batches use the same structure: { "has_more": true/false, "cards": [{ "front": \"...\", \"back\": \"...\" }] } — do NOT output title/desc.\n4) cards may only contain front/back; no other fields; no duplicates; front/back cannot be empty.\n5) Keep LaTeX backslashes (e.g., \\\\frac{GM}{r^2} or $E = mc^2$) for formulas.\n6) If length risk, reduce cards to keep JSON complete.\n7) When TOTAL reached, set has_more=false and stop.\n8) If has_more is already false and I still say \"继续\", reply: has_more is false, you can import in FlashCraft now. Do NOT output cards.\n9) **No raw line breaks inside strings**; use \\\\n for new lines or the JSON will be invalid.\n\n[Continue]\n- I will reply with a single word: 继续\n- When you see 继续, output the next JSON batch until has_more=false.\n\nIf you don't have my source yet, reply: OK, paste the source. (No JSON yet.)`;
+            }
+            return lang === 'zh'
+                ? `你是 FlashCraft 词书生成器。请基于我提供的资料生成记忆卡片。\n\n【输出规则（必须遵守）】\n1) 每次回复只能输出一个完整 JSON，不要解释、不要 Markdown、不要代码块。\n2) JSON 必须可直接 JSON.parse。\n3) 结构固定：{ "has_more": true/false, "cards": [{ "front": \"...\", \"back\": \"...\" }] }，不要输出 title/desc。\n4) cards 只允许 front/back；不要输出其它字段；front/back 不能为空；不要重复卡片。\n5) 支持公式请用 LaTeX，保持反斜杠：如 \\\\frac{GM}{r^2} 或 $E = mc^2$。\n6) 如果预计会被截断，减少本批卡片数量，保证 JSON 完整闭合。\n7) 如果内容很多需要分批，请把 has_more 设为 true；我回复“继续”时再输出下一批；最后一批把 has_more 设为 false。\n8) 如果 has_more 已是 false 而我还说“继续”，请回复：has_more 已是 false，请前往 FlashCraft 导入，且不要再输出卡片。\n9) **不要在字符串里换行**，需要换行请写成 \\\\n；否则 JSON 不能解析。\n\n如果我还没提供资料，请先回复：OK，请粘贴资料。（不要输出 JSON）`
+                : `You are a FlashCraft deck generator. Create flashcards from my source text.\n\n[Strict rules]\n1) Each reply must be ONE valid JSON only. No explanations. No Markdown. No code fences.\n2) JSON must be directly parseable.\n3) Use exactly: { "has_more": true/false, "cards": [{ "front": \"...\", \"back\": \"...\" }] } — no title/desc/other fields.\n4) front/back cannot be empty; no duplicates.\n5) Keep LaTeX backslashes (e.g., \\\\frac{GM}{r^2} or $E = mc^2$).\n6) If length is risky, reduce cards per batch to keep JSON complete.\n7) When content needs multiple batches, set has_more=true; I will reply \"继续\" to get the next batch; last batch must set has_more=false.\n8) If has_more is already false and I still say \"继续\", reply: has_more is false, you can import in FlashCraft now. Do NOT output cards.\n9) **No raw line breaks inside strings**; use \\\\n for new lines.\n\nIf you don't have my source yet, reply: OK, paste the source. (No JSON yet.)`;
+        }, [specifyCount, totalCards, maxPerReply, lang]);
 
         if (!isOpen) return null;
 
-        const copyPrompt = () => {
-            navigator.clipboard.writeText(AI_PROMPT)
-                .then(() => onToast?.({ variant: 'success', title: t.createWizard, message: t.promptCopied, icon: 'copy' }))
-                .catch(() => onToast?.({ variant: 'error', title: t.createWizard, message: t.manualCopy }));
-        };
-
-	        const handleFileUpload = (e) => {
-	            const file = e.target.files[0];
-	            if (!file) return;
-	            const reader = new FileReader();
-	            reader.onload = (event) => { setJsonInput(event.target.result); setErrorMsg(null); };
-	            reader.readAsText(file);
-	        };
-
-	        const handleAutoGenerate = async () => {
-	            setErrorMsg(null);
-	            const sourceText = (jsonInput || '').trim();
-	            if (!sourceText) { setErrorMsg(lang === 'zh' ? "请先粘贴资料或上传文件" : "Paste source text or upload a file first."); return; }
-	            setIsAutoGenerating(true);
-	            try {
-	                const apiBase = getCraftApiBase();
-	                const res = await fetch(`${apiBase}/api/flashcraft/generate_deck`, {
-	                    method: 'POST',
-	                    headers: { 'Content-Type': 'application/json' },
-	                    body: JSON.stringify({ requirements: autoReq, sourceText, totalCards })
-	                });
-	                const data = await res.json().catch(() => ({}));
-	                if (!res.ok) {
-	                    const msg = data?.error?.message || `${res.status} ${res.statusText}`;
-	                    throw new Error(msg);
-	                }
-	                const cardsRaw = Array.isArray(data.cards) ? data.cards : [];
-	                const now = Date.now();
-	                const cards = cardsRaw.map((c, i) => ({
-	                    id: `card-${now}-${i}`,
-	                    front: (c?.front ?? '').toString(),
-	                    back: (c?.back ?? '').toString(),
-	                })).filter(c => c.front.trim() || c.back.trim());
-	                if (!cards.length) throw new Error(lang === 'zh' ? "AI 未返回可用卡片" : "No cards returned.");
-
-	                setPendingCards(cards);
-	                setLastParsed(cards.length);
-	                if (!titleInput.trim() && data.title) setTitleInput(String(data.title));
-	                if (!descInput.trim() && data.desc) setDescInput(String(data.desc));
-	                onToast?.({ variant: 'success', title: lang === 'zh' ? 'AI 自动生成' : 'AI Generate', message: `${cards.length} ${t.cards}`, icon: 'sparkles' });
-	            } catch (e) {
-	                setErrorMsg((lang === 'zh' ? "AI 生成失败: " : "AI generation failed: ") + (e?.message || String(e)));
-	            } finally {
-	                setIsAutoGenerating(false);
-	            }
-	        };
-
-	        const handleParseAndAccumulate = () => {
-	            setErrorMsg(null);
-	            const cards = parseCardsFromInput(jsonInput, parserMode);
-	            if (!cards.length) { setErrorMsg(t.formatError); return; }
+        const handleParseAndAccumulate = () => {
+            setErrorMsg(null);
+            const cards = parseCardsFromInput(jsonInput, parserMode);
+            if (!cards.length) { setErrorMsg(t.formatError); return; }
             setPendingCards(prev => [...prev, ...cards]);
             setLastParsed(cards.length);
             setIsClearing(true);
@@ -698,11 +838,6 @@
             onClose();
         };
 
-        const handleCreateEmpty = () => {
-            onCreateEmpty();
-            onClose();
-        };
-
         return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-md animate-blur-in p-6">
                 <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -711,50 +846,42 @@
                         <button onClick={onClose}><Icon name="x" className="text-gray-400 hover:text-black" /></button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-[#f9f9fb]">
-                        {/* Option 1: Create Blank */}
-                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group cursor-pointer hover:border-craft-black transition-colors" onClick={handleCreateEmpty}>
-                            <div>
-                                <h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-plus" size={16}/> {t.createBlank}</h4>
-                                <p className="text-xs text-gray-500 mt-1">{t.createBlankDesc}</p>
+                        <div className="bg-gradient-to-r from-yellow-100 via-amber-50 to-white p-5 rounded-2xl border border-amber-200 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="bot" size={16}/> {t.importStep1}</h4></div>
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/70 border border-amber-100 shadow-inner">
+                                <div className="text-sm font-bold text-gray-700 flex items-center gap-2"><Icon name="hash" size={16}/> 是否限制张数</div>
+                                <button onClick={() => setSpecifyCount(v => !v)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all ${specifyCount ? 'bg-craft-black' : 'bg-gray-300'}`}>
+                                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition ${specifyCount ? 'translate-x-5' : 'translate-x-1'}`}></span>
+                                </button>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-gray-50 group-hover:bg-craft-black group-hover:text-white flex items-center justify-center transition-colors"><Icon name="chevron-right" size={16}/></div>
+                            {specifyCount && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500">目标张数 TOTAL</label>
+                                        <input type="number" min="1" value={totalCards} onChange={e => setTotalCards(Math.max(1, Number(e.target.value) || 1))} className="w-full mt-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500">每批上限 MAX_PER_REPLY</label>
+                                        <input type="number" min="1" value={maxPerReply} onChange={e => setMaxPerReply(Math.max(1, Number(e.target.value) || 1))} className="w-full mt-1 p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" />
+                                    </div>
+                                </div>
+                            )}
+                            <div className="relative group">
+                                <textarea readOnly value={AI_PROMPT} className="w-full h-72 p-3 rounded-xl border border-amber-200 text-[11px] font-mono text-gray-700 bg-white/70 resize-none focus:outline-none leading-relaxed shadow-inner"></textarea>
+                                <button onClick={() => navigator.clipboard.writeText(AI_PROMPT)} className="absolute bottom-2 right-2 bg-craft-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
+                            </div>
+                            <div className="text-[11px] text-gray-600 leading-relaxed">复制提示词到你选择的模型（Gemini/其他），生成 JSON 后粘贴到下方输入框。</div>
                         </div>
-
-                        <div className="flex items-center gap-4">
-                            <div className="h-px bg-gray-200 flex-1"></div>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">OR AI IMPORT</span>
-                            <div className="h-px bg-gray-200 flex-1"></div>
-                        </div>
-
-	                        {/* Option 2: AI Import Wizard */}
-	                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-	                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="bot" size={16}/> {t.importStep1}</h4></div>
-	                            <div className="relative group">
-	                                <textarea readOnly value={AI_PROMPT} className="w-full h-40 p-3 rounded-xl border border-gray-200 text-[10px] font-mono text-gray-500 bg-gray-50 resize-none focus:outline-none leading-relaxed"></textarea>
-	                                <button onClick={copyPrompt} className="absolute bottom-2 right-2 bg-black text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md active:scale-95">{t.copyPrompt}</button>
-	                            </div>
-	                        </div>
-	                        <div className="space-y-3">
-	                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckTitleLabel}</label><input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={t.deckTitle} /></div>
-	                            <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-craft-black flex items-center gap-2"><Icon name="file-text" size={16}/> {t.importStep2}</h4><div className="flex gap-2"><button onClick={() => fileInputRef.current.click()} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition-colors">{t.upload}</button><input ref={fileInputRef} type="file" accept=".json,.txt,.md" className="hidden" onChange={handleFileUpload} /></div></div>
-	                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-	                                <div className="flex items-center justify-between gap-3">
-	                                    <div className="text-[11px] font-bold text-gray-700 flex items-center gap-2"><Icon name="sparkles" size={14}/> {lang === 'zh' ? 'AI 自动生成词书（Beta）' : 'AI Auto-generate Deck (Beta)'}</div>
-	                                    <button onClick={handleAutoGenerate} disabled={isAutoGenerating || !jsonInput.trim()} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${isAutoGenerating || !jsonInput.trim() ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-craft-black text-white hover:bg-gray-800 shadow-sm'}`}>
-	                                        {isAutoGenerating ? (lang === 'zh' ? '生成中…' : 'Generating…') : (lang === 'zh' ? '一键生成' : 'Generate')}
-	                                    </button>
-	                                </div>
-	                                <input value={autoReq} onChange={(e) => setAutoReq(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={lang === 'zh' ? '生成要求（可选）：例如「按章节」「更偏考点」「带例题」' : 'Optional requirements (e.g. by chapters, exam-focused, with examples)'} />
-	                                <div className="text-[10px] text-gray-500 leading-relaxed">{lang === 'zh' ? '说明：该功能会调用站点的 Gemini 代理（共享免费额度），达到上限后会提示稍后再试。' : 'Note: Uses the site Gemini proxy (shared free quota). If quota is exceeded, try later.'}</div>
-	                            </div>
-	                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
-	                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
-	                                <div className="flex gap-2">
-	                                    {['auto','json','txt'].map(mode => (
-	                                        <button key={mode} onClick={() => setParserMode(mode)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}>{mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}</button>
-	                                    ))}
-	                                </div>
-	                            </div>
+                        <div className="space-y-3">
+                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">{t.deckTitleLabel}</label><input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 focus:border-craft-black outline-none text-sm" placeholder={t.deckTitle} /></div>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                                <span className="font-bold text-gray-500 uppercase tracking-widest">{t.parseMode}</span>
+                                <div className="flex gap-2">
+                                    {['auto','json','txt'].map(mode => (
+                                        <button key={mode} onClick={() => setParserMode(mode)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${parserMode === mode ? 'bg-craft-black text-white border-craft-black' : 'bg-white border-gray-200 text-gray-500 hover:border-craft-black/40'}`}>{mode === 'auto' ? t.parseAuto : mode === 'json' ? t.parseJsonOnly : t.parseTxtOnly}</button>
+                                    ))}
+                                </div>
+                            </div>
                             <div className={`relative`}><textarea value={jsonInput} onChange={e => { setJsonInput(e.target.value); setErrorMsg(null); }} className={`w-full h-40 p-4 rounded-xl border border-gray-200 focus:border-craft-black outline-none font-mono text-xs bg-white resize-none shadow-inner transition-colors ${isClearing ? 'animate-fade-out' : ''}`} placeholder={t.pasteJsonPlaceholder}></textarea></div>
                             {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-center gap-2 animate-pulse border border-red-100"><Icon name="alert-circle" size={16} /> {errorMsg}</div>}
                             {pendingCards.length > 0 && <div className="p-3 bg-green-50 text-green-700 text-xs font-bold rounded-xl flex items-center gap-2 border border-green-100"><Icon name="check-circle" size={16} /> {t.accumulatedCards}: {pendingCards.length} {t.cards} {lastParsed ? `( +${lastParsed} )` : ''}</div>}
@@ -1057,7 +1184,7 @@
                     <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600"><Icon name="zap" size={16} /></div><span className="text-sm font-medium text-gray-700">{t.reduceMotion}</span></div><button onClick={toggleMotion} className={`w-11 h-6 rounded-full transition-all relative ${reduceMotion ? 'bg-craft-black' : 'bg-gray-200'}`}><div className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform ${reduceMotion ? 'translate-x-6' : 'translate-x-1'}`} /></button></div>
                     <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm space-y-3"><div className="flex items-center gap-2 mb-2"><Icon name="download" size={16} className="text-blue-600"/><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.exportManager}</span></div><select className="w-full p-2 rounded-lg border border-gray-200 text-sm focus:border-black outline-none bg-gray-50" value={selectedDeckId} onChange={(e) => setSelectedDeckId(e.target.value)}><option value="">{t.selectDeck}</option>{decks.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select><div className="flex gap-2"><button onClick={() => setExportFormat('json')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${exportFormat === 'json' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>JSON</button><button onClick={() => setExportFormat('txt')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${exportFormat === 'txt' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>TXT</button></div><button onClick={handleExport} disabled={!selectedDeckId} className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all ${selectedDeckId ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>{t.exportBtn}</button></div>
                     <div className="p-4 bg-gray-100 rounded-xl border border-gray-200 shadow-inner text-center cursor-pointer hover:bg-gray-200 transition-colors group" onClick={copyContact}><div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.author}</div><div className="text-sm font-mono font-bold text-craft-black flex items-center justify-center gap-2">2014184720@qq.com <Icon name="copy" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity"/></div><div className="text-[11px] text-gray-500 mt-1">天天开心一点啦 - Edison6227</div></div>
-                    <button onClick={onReset} className="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-xl border border-red-100 shadow-sm transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-white/50 text-red-600 flex items-center justify-center"><Icon name="trash-2" size={16} /></div><span className="text-sm font-medium text-red-600">{t.resetData}</span></div></button>
+                    {/* 已移除“重置所有数据”入口，避免误清空 */}
                 </div>
             </div>
         </div>
@@ -1146,7 +1273,7 @@
         );
     };
 
-    const HomeView = ({ decks, actions, showGuide, sortMode, setSortMode, reduceMotion, lang, highlightDeckId, user, dailyStats }) => {
+    const HomeView = ({ decks, actions, showGuide, sortMode, setSortMode, reduceMotion, lang, highlightDeckId, user, dailyStats, leaderboard, leaderboardLoading }) => {
         const sortedDecks = [...decks].sort((a, b) => { if (sortMode === 'count') return b.cards.length - a.cards.length; if (sortMode === 'color') return a.color.localeCompare(b.color); return 0; });
         const t = TRANSLATIONS[lang];
         const levelColor = (lvl) => {
@@ -1167,15 +1294,35 @@
                             <span className="text-[10px] font-mono font-bold text-gray-400">{user?.xp_total ? `${user.xp_total} XP` : ''}</span>
                         </div>
                         <button onClick={actions.openSettings} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.settings}><Icon name="settings" size={20} /></button>
+                        <button onClick={actions.openLeaderboard} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.leaderboard}><Icon name="trophy" size={20} className="text-amber-500" /></button>
+                        <button onClick={actions.openGroups} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={TRANSLATIONS[lang].groups}><Icon name="users" size={20} /></button>
                         <button onClick={actions.openSharedImport} className="p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all text-gray-500 hover:text-black border border-transparent hover:border-gray-200" title={t.import}><Icon name="download" size={20} /></button>
-                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
-                        <button onClick={actions.openCreateModal} className="flex items-center gap-2 px-5 py-2.5 bg-craft-black text-white rounded-xl font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95"><Icon name="plus" size={18} /><span className="text-sm">{t.newDeck}</span></button>
+                        {/* 顶部不再重复创建按钮，主内容区已有快速入口 */}
                     </div>
                 </header>
                 <div className="flex-1 pt-28 px-6 md:px-10 pb-20 max-w-7xl mx-auto w-full">
                     <DailyGoalWidget stats={dailyStats} lang={lang} />
+
+                    {/* Home quick actions */}
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onClick={actions.openCreateModal} className="w-full px-4 py-4 rounded-2xl bg-gradient-to-r from-amber-200 via-amber-400 to-orange-300 text-black shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all text-left">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 font-bold"><Icon name="sparkles" size={18} /> AI 外部生成</div>
+                                <Icon name="chevron-right" size={16} className="text-black/60" />
+                            </div>
+                            <p className="text-xs text-black/70 mt-2">上传资料 / 粘贴文本，一键生成词书</p>
+                        </button>
+                        <button onClick={actions.openSharedImport} className="w-full px-4 py-4 rounded-2xl bg-white border border-gray-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all text-left">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 font-bold text-craft-black"><Icon name="upload" size={18} /> 手动导入</div>
+                                <Icon name="chevron-right" size={16} className="text-gray-300" />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">粘贴 JSON / 分享码 导入现成词书</p>
+                        </button>
+                    </div>
                     
-                    <div className="flex items-end justify-between mb-8"><div><h2 className="text-2xl font-bold text-craft-black flex items-center gap-3"><Icon name="layout-grid" className="text-gray-400" /> {t.library}</h2></div><div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-100"><button onClick={() => setSortMode('default')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'default' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortDefault}</button><button onClick={() => setSortMode('color')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'color' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortColor}</button><button onClick={() => setSortMode('count')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'count' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortCount}</button></div></div>
+                    {/* 排行榜 */}
+                    <div className="flex items-end justify-between mb-8 mt-6"><div><h2 className="text-2xl font-bold text-craft-black flex items-center gap-3"><Icon name="layout-grid" className="text-gray-400" /> {t.library}</h2></div><div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-100"><button onClick={() => setSortMode('default')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'default' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortDefault}</button><button onClick={() => setSortMode('color')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'color' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortColor}</button><button onClick={() => setSortMode('count')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${sortMode === 'count' ? 'bg-craft-gray text-black font-bold' : 'text-gray-400 hover:text-gray-600'}`}>{t.sortCount}</button></div></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         {sortedDecks.map((deck, idx) => {
                             const isNew = deck.id === highlightDeckId;
@@ -1439,6 +1586,12 @@
         const [showProWelcome, setShowProWelcome] = useState(false);
         const [toast, setToast] = useState(null);
         const [checkinSyncState, setCheckinSyncState] = useState({ status: 'idle', error: null });
+        const [leaderboard, setLeaderboard] = useState([]);
+        const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+        const [showLeaderboard, setShowLeaderboard] = useState(false);
+        const [groups, setGroups] = useState([]);
+        const [groupsLoading, setGroupsLoading] = useState(false);
+        const [showGroupModal, setShowGroupModal] = useState(false);
         
         // --- Daily Stats State ---
         const [dailyStats, setDailyStats] = useState(() => {
@@ -1587,6 +1740,93 @@
             loadProfile();
             return () => { cancelled = true; };
         }, [session?.user?.id]);
+
+        useEffect(() => {
+            const loadLeaderboard = async () => {
+                setLeaderboardLoading(true);
+                try {
+                    let data = null;
+                    const rpc = await supabase.rpc('flashcraft_leaderboard_top30');
+                    if (!rpc.error && Array.isArray(rpc.data)) data = rpc.data;
+                    if (!data) {
+                        const res = await supabase.from('profiles').select('email,level,xp_total,total_time_sec,checked_count').order('xp_total', { ascending: false }).limit(30);
+                        if (!res.error) data = res.data;
+                    }
+                    setLeaderboard(data || []);
+                } catch (_) {
+                    setLeaderboard([]);
+                } finally {
+                    setLeaderboardLoading(false);
+                }
+            };
+            loadLeaderboard();
+        }, [session?.user?.id]);
+
+        const loadGroups = async () => {
+            if (!session?.user?.id) return;
+            setGroupsLoading(true);
+            try {
+                const rpc = await supabase.rpc('flashcraft_groups_list');
+                if (!rpc.error && Array.isArray(rpc.data)) setGroups(rpc.data);
+                else setGroups([]);
+            } catch (_) {
+                setGroups([]);
+            } finally {
+                setGroupsLoading(false);
+            }
+        };
+
+        useEffect(() => { loadGroups(); }, [session?.user?.id]);
+
+        const joinGroupByCode = async (code) => {
+            try {
+                const res = await supabase.rpc('flashcraft_group_join', { p_code: code });
+                if (res.error) throw res.error;
+                await loadGroups();
+                pushToast({ variant: 'success', title: TRANSLATIONS[lang].groups, message: '加入成功', icon: 'users' });
+                return true;
+            } catch (e) {
+                pushToast({ variant: 'error', title: TRANSLATIONS[lang].groups, message: e.message || '加入失败' });
+                return false;
+            }
+        };
+
+        const createGroup = async (name, code) => {
+            try {
+                const payload = { p_name: name, p_code: code };
+                const res = await supabase.rpc('flashcraft_group_create', payload);
+                if (res.error) throw res.error;
+                await loadGroups();
+                pushToast({ variant: 'success', title: TRANSLATIONS[lang].groups, message: '创建成功', icon: 'users' });
+                return true;
+            } catch (e) {
+                pushToast({ variant: 'error', title: TRANSLATIONS[lang].groups, message: e.message || '创建失败' });
+                return false;
+            }
+        };
+
+        const leaveGroup = async (groupId) => {
+            try {
+                const res = await supabase.rpc('flashcraft_group_leave', { p_group_id: groupId });
+                if (res.error) throw res.error;
+                await loadGroups();
+                pushToast({ variant: 'success', title: TRANSLATIONS[lang].groups, message: '已退出', icon: 'log-out' });
+            } catch (e) {
+                pushToast({ variant: 'error', title: TRANSLATIONS[lang].groups, message: e.message || '退出失败' });
+            }
+        };
+
+        const disbandGroup = async (groupId) => {
+            if (!confirm('确定解散该小组？此操作不可撤销。')) return;
+            try {
+                const res = await supabase.rpc('flashcraft_group_disband', { p_group_id: groupId });
+                if (res.error) throw res.error;
+                await loadGroups();
+                pushToast({ variant: 'success', title: TRANSLATIONS[lang].groups, message: '小组已解散', icon: 'trash' });
+            } catch (e) {
+                pushToast({ variant: 'error', title: TRANSLATIONS[lang].groups, message: e.message || '解散失败（仅管理员可操作）' });
+            }
+        };
 
         // Sync Flashcraft daily check-in (30 cards + 10 mins) to Supabase within minutes.
         useEffect(() => {
@@ -1745,6 +1985,8 @@
             openSharedImport: () => setShowSharedImport(true),
             openCreateModal: () => setShowCreateDeck(true),
             openSettings: () => setIsSettingsOpen(true),
+            openLeaderboard: () => setShowLeaderboard(true),
+            openGroups: () => setShowGroupModal(true),
             updateProgress: (deckId, index) => {
                 setDecks(prev => prev.map(d => d.id === deckId ? { ...d, progressIndex: index } : d));
                 const deck = decksRef.current.find(d => d.id === deckId);
@@ -1813,8 +2055,10 @@
                 <ProCelebrationOverlay isOpen={showProCelebration} onClose={() => setShowProCelebration(false)} lang={lang} />
                 <ProWelcomeOverlay isOpen={showProWelcome} onClose={() => setShowProWelcome(false)} lang={lang} />
                 <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} lang={lang} user={user} />
-                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onReset={actions.resetData} onExport={actions.exportData} decks={decks} onExportSingle={actions.onExportSingle} reduceMotion={reduceMotion} toggleMotion={actions.toggleMotion} lang={lang} setLang={setLang} user={user} onSignOut={signOut} onRedeemCode={redeemProCode} onOpenAdmin={() => { setIsSettingsOpen(false); setIsAdminOpen(true); }} onToast={pushToast} />
-                {view === 'home' && <HomeView decks={decks} actions={actions} showGuide={showGuide} sortMode={sortMode} setSortMode={setSortMode} reduceMotion={reduceMotion} lang={lang} highlightDeckId={highlightDeckId} user={user} dailyStats={dailyStats} />}
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onReset={null} onExport={actions.exportData} decks={decks} onExportSingle={actions.onExportSingle} reduceMotion={reduceMotion} toggleMotion={actions.toggleMotion} lang={lang} setLang={setLang} user={user} onSignOut={signOut} onRedeemCode={redeemProCode} onOpenAdmin={() => { setIsSettingsOpen(false); setIsAdminOpen(true); }} onToast={pushToast} />
+                <LeaderboardModal isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} data={leaderboard} lang={lang} loading={leaderboardLoading} />
+                <GroupModal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} groups={groups} loading={groupsLoading} onJoin={joinGroupByCode} onCreate={createGroup} onLeave={leaveGroup} onDisband={disbandGroup} lang={lang} />
+                {view === 'home' && <HomeView decks={decks} actions={actions} showGuide={showGuide} sortMode={sortMode} setSortMode={setSortMode} reduceMotion={reduceMotion} lang={lang} highlightDeckId={highlightDeckId} user={user} dailyStats={dailyStats} leaderboard={leaderboard} leaderboardLoading={leaderboardLoading} />}
                 {view === 'edit' && <EditView deck={activeDeck} actions={actions} lang={lang} />}
                 {view === 'study' && <StudyView deck={activeDeck} actions={actions} updateProgress={actions.updateProgress} lang={lang} onSessionUpdate={updateDailyProgress} currentDailyStats={dailyStats} />}
                 <Toast toast={toast} onDismiss={dismissToast} />
